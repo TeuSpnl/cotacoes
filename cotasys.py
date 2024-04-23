@@ -1,7 +1,8 @@
 from tkinter import *
 from tkinter import messagebox, Toplevel, filedialog
 from tkinter.filedialog import asksaveasfilename
-import csv
+from functions.mail import *
+import pandas as pd
 import os
 
 # Define X and Y Axis
@@ -28,8 +29,6 @@ for i, x in enumerate(xAxis):
     label.grid(row=0, column=i + 1, sticky='sn', pady=10)
 
 # Function to add rows
-
-
 def add_row():
     row_number = len(entries) + 1
     row_entries = []
@@ -126,7 +125,8 @@ def get_next_filename():
     directory = "cotacoes"
     if not os.path.exists(directory):
         os.makedirs(directory)
-    files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f)) and f.endswith('.csv')]
+    files = [f for f in os.listdir(directory) if os.path.isfile(
+        os.path.join(directory, f)) and f.endswith('.csv')]
     highest_number = 0
     for file in files:
         try:
@@ -137,20 +137,22 @@ def get_next_filename():
             continue
     return os.path.join(directory, f"{highest_number + 1}.csv")
 
+
 def export_to_csv():
     filepath = get_next_filename()
-    
+
     # Gather data from entries
     data = []
     for row_entries in entries:
         row_data = [entry.get() for entry in row_entries]
         data.append(row_data)
 
-    # Write data to CSV
-    with open(filepath, 'w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(xAxis)  # Write header
-        writer.writerows(data)  # Write data rows
+    # Create a DataFrame and write to CSV
+    df = pd.DataFrame(data, columns=xAxis)
+    df.to_csv(filepath, index=False, encoding='utf-8-sig',
+              sep=';')  # Save to CSV without the index
+    
+    
     messagebox.showinfo("Sucesso!",
                         f"Arquivo exportado para {filepath} e enviado para email")
 
