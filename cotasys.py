@@ -4,9 +4,10 @@ from tkinter.filedialog import asksaveasfilename
 from functions.mail import *
 import pandas as pd
 import os
+import re
 
 # Define X and Y Axis
-xAxis = ["Nome", "Código", "Quantidade"]
+xAxis = ["Código", "Nome", "Quantidade"]
 
 # Initial rows count
 initial_rows = 3
@@ -78,10 +79,21 @@ def open_pdf_window():
     new_window.configure(bg='white')
     Label(new_window, text="Salvar como PDF?").pack(pady=10)
 
-    Button(new_window, text="Sim", command=lambda: save_as_pdf(
-        new_window), width=10, bg='#FFFFF9').pack(side="left", padx=5, pady=5)
+    Button(
+        new_window, text="Sim", command=lambda: save_as_pdf(new_window),
+        width=10, bg='#FFFFF9').pack(
+        side="left", padx=5, pady=5)
     Button(new_window, text="Não", command=new_window.destroy,
            width=10, bg='#FFFFF9').pack(side="right", padx=5, pady=5)
+
+
+def save_as_pdf(new_window):
+    new_window.destroy()
+    file_path = asksaveasfilename(defaultextension=".pdf", filetypes=[
+                                  ("PDF files", "*.pdf")])
+    if file_path:
+        # Save data as PDF (simulation)
+        messagebox.showinfo("Salvar como PDF", f"PDF salvo em {file_path}")
 
 
 def finalize():
@@ -115,15 +127,6 @@ def finalize():
            bg='white').pack(side=LEFT, padx=10)
 
 
-def save_as_pdf(new_window):
-    new_window.destroy()
-    file_path = asksaveasfilename(defaultextension=".pdf", filetypes=[
-                                  ("PDF files", "*.pdf")])
-    if file_path:
-        # Save data as PDF (simulation)
-        messagebox.showinfo("Salvar como PDF", f"PDF salvo em {file_path}")
-
-
 def get_next_filename():
     directory = "cotacoes"
     if not os.path.exists(directory):
@@ -152,18 +155,26 @@ def export_to_csv():
 
     # Create a DataFrame and write to CSV
     df = pd.DataFrame(data, columns=xAxis)
-    df.to_csv(filepath, index=False, encoding='utf-8-sig',
-              sep=';')  # Save to CSV without the index
+    df.to_csv(filepath, index=False, encoding='utf-8-sig', sep=';')  # Save to CSV without the index
 
     email_entry(filepath)
 
-    open_pdf_window()
+# Function to validate email addresses
+
+
+def is_valid_email(email):
+    if not email.strip():  # Check if the email is not just empty or spaces
+        return False
+    pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+    return re.match(pattern, email) is not None
 
 
 def email_entry(filepath):
     email_window = Toplevel(root)
-    email_window.title("Escolher emails")
+    email_window.title("Adicionar emails")
     email_window.configure(bg='white')
+    label = Label(email_window, text="Adicionar emails", font=("Arial", 14))
+    label.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
 
     # List to store all email entry widgets
     email_entries = []
@@ -172,45 +183,57 @@ def email_entry(filepath):
 
     def add_email_entry():
         entry = Entry(email_window, width=25)
-        entry.grid(row=len(email_entries), column=0,
-                   padx=5, pady=5, sticky="we")
+        entry.grid(row=len(email_entries) + 1, column=0, padx=5, pady=5, sticky="we")
         email_entries.append(entry)
+        entry.bind('<KeyRelease>', validate_emails)  # Bind key release event to validate emails
         update_remove_button_state()
+        update_layout()
 
     # Function to remove the last email entry field
     def remove_email_entry():
         if email_entries:
-            last_entry = email_entries.pop()
-            last_entry.destroy()
+            entry_to_remove = email_entries.pop()
+            entry_to_remove.destroy()
             update_remove_button_state()
+            update_layout()
+            validate_emails(None)  # Validate emails after removal
+
+    def validate_emails(event):
+        all_valid = all(is_valid_email(entry.get()) for entry in email_entries if entry.get())
+        send_button.config(state='normal' if all_valid else 'disabled')
 
     # Function to gather all emails and call send_email (placeholder for your actual send_email function)
     def gather_emails_and_send():
         emails = [entry.get() for entry in email_entries if entry.get()]
-        send_email(filepath, emails)
-        messagebox.showinfo("Sucesso!", f"Arquivo exportado para {
-                            filepath} e enviado para email")
+        a = send_email(filepath, emails)
+        if a is False:
+            messagebox.showinfo("Erro!", f"Arquivo não encontrado. Entrar em contato com o magnífico TI.")
+        else:
+            messagebox.showinfo("Sucesso!", f"Arquivo exportado para {filepath} e enviado para email")
+        email_window.destroy()
+        open_pdf_window()
 
     # "+" button to add new email entries
     add_button = Button(email_window, text="+", command=add_email_entry)
-    add_button.grid(row=0, column=1, padx=5, pady=5)
+    add_button.grid(row=1, column=1, padx=5, pady=5)
 
     # "-" button to remove the last email entry
     remove_button = Button(email_window, text="-",
-                           command=remove_email_entry)
-    remove_button.grid(row=1, column=1, padx=5, pady=5)
+                           command=remove_email_entry, state='disabled')
+    remove_button.grid(row=2, column=1, padx=5, pady=5)
 
     # "Send" button to gather emails and send
     send_button = Button(email_window, text="Enviar",
-                         command=gather_emails_and_send)
-    send_button.grid(row=2, column=0, columnspan=2, padx=5, pady=5)
+                         command=gather_emails_and_send, state='disabled')
+    send_button.grid(row=50, column=0, columnspan=2, padx=5, pady=5)
 
     # Function to update the state of the "-" button
     def update_remove_button_state():
-        if len(email_entries) > 1:
-            remove_button["state"] = "normal"
-        else:
-            remove_button["state"] = "disabled"
+        remove_button.config(state='normal' if len(email_entries) > 1 else 'disabled')
+
+    def update_layout():
+        for index, entry in enumerate(email_entries):
+            entry.grid(row=index+1, column=0)
 
     # Initial email entry
     add_email_entry()

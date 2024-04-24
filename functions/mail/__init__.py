@@ -4,7 +4,6 @@ from email.message import EmailMessage
 from email.mime.image import MIMEImage
 from functions.secrets import senha
 from tkinter import messagebox
-# from functions.calen import log_dev
 from email.utils import make_msgid
 
 import os
@@ -15,17 +14,20 @@ EMAIL_ADDRESS = 'noreply-faturas@comagro.com.br'  # Endereço de email do remete
 EMAIL_PASS = senha  # Senha do email do remetente
 
 
-def add_attachment(msg, filename):
+def add_attachment(msg, filepath):
     """    Lê e adiciona anexo ao email    """
 
-    if not os.path.isfile(filename):
+    print(filepath)
+
+    print(os.path.isfile(filepath))
+
+    if not os.path.isfile(filepath):
         # Caso não haja arquivo no caminho especificado
-        messagebox.showinfo(
-            "Erro!", f"Planilha não encontrada. Entrar em contato com o magnífico TI.")
-        return
+        messagebox.showinfo("Erro!", f"Planilha não encontrada. Entrar em contato com o magnífico TI.")
+        return False
 
     # Determine the content type of the file
-    ctype, encoding = mimetypes.guess_type(filename)
+    ctype, encoding = mimetypes.guess_type(filepath)
 
     if ctype is None or encoding is not None:
         ctype = 'application/octet-stream'
@@ -34,35 +36,34 @@ def add_attachment(msg, filename):
     maintype, subtype = ctype.split('/', 1)
 
     # Read the file and set the correct MIME type
-    with open(filename, 'rb') as file:
+    with open(filepath, 'rb') as file:
         file_data = file.read()
         if maintype == 'image':
             # For images, use MIMEImage
             attachment = MIMEImage(file_data, _subtype=subtype)
-            attachment.add_header(
-                'Content-ID', '<{}>'.format(os.path.basename(filename)))
-            attachment.add_header('Content-Disposition',
-                                  'inline', filename=os.path.basename(filename))
+            attachment.add_header('Content-ID', '<{}>'.format(os.path.basename(filepath)))
+            attachment.add_header('Content-Disposition', 'inline', filepath=os.path.basename(filepath))
         else:
             # For all other file types, use MIMEApplication
+            maintype = 'text'
+            subtype = 'csv'
             attachment = MIMEApplication(file_data, _subtype=subtype)
-            attachment.add_header(
-                'Content-Disposition', 'attachment', filename=os.path.basename(filename))
+            attachment.add_header('Content-Disposition', 'attachment', filename='cotacao_comagro.csv', filepath=os.path.basename(filepath))
         msg.attach(attachment)
 
 
 def mail_bohe(msg, image_c_id):
     """    Insere o header e o corpo no email    """
 
+    # Create the email footer
+    footer = ("<div style='border:none;border-bottom:solid windowtext 1.0pt;padding:0cm 0cm 1.0pt 0cm'><p class='MsoNormal' style='border:none;padding:0cm'><span><u></u>&nbsp;<u></u></span></p></div>" +
+              "<p></p><p style='max-width: 70%;font-size: 12pt;'>Atenciosamente,<br/>")
+
     # Create the email body and add the footer
     body = f"<p style='max-width: 70%;font-size: 13pt;'>Olá!" + \
         "</br>Envio a seguir uma cotação na planilha em anexo." + \
         "</br>Solicito sua resposta assim que possível.</p>" + \
         footer
-
-    # Create the email footer
-    footer = ("<div style='border:none;border-bottom:solid windowtext 1.0pt;padding:0cm 0cm 1.0pt 0cm'><p class='MsoNormal' style='border:none;padding:0cm'><span><u></u>&nbsp;<u></u></span></p></div>" +
-              "<p></p><p style='max-width: 70%;font-size: 12pt;'>Atenciosamente,<br/>")
 
     body += f'<br><img src="cid:{image_c_id[1:-1]}">'
 
@@ -79,43 +80,47 @@ def send_email(filepath, emails):
         filepath (string): path of the actual quotation
         emails (list): list of emails to send the quotation
     """
-    
-    ################################################### DELETE THIS SECTION ###################################################
-    messagebox.showinfo(f"Os emails são {emails}")
 
-    emails = ['ti@comagro.com.br', 'mateusspinola@comagro.com.br']
+    ################################################### DELETE THIS SECTION ###################################################
+    messagebox.showinfo("Emails", f"Os emails são {emails}")
+
+    emails = ['noiergamer2014@gmail.com', 'mateus.spinolaa@gmail.com']
     ################################################### DELETE THIS SECTION ###################################################
 
-    filepath = f"./../../{filepath}"
-    
     # Cria um corpo de email e define o assunto
     msg = EmailMessage()
     msg['Subject'] = f'Cotação Comagro'
-    msg['From'] = EMAIL_ADDRESS
 
     # Cria um texto plain e evita erro no get_playload
-    msg.set_content(
-        'If you can see this, please consider updating your email client to support HTML emails.')
+    msg.set_content('If you can see this, please consider updating your email client to support HTML emails.')
 
     # Cria um Content-ID para a imagem
     image_cid = make_msgid(domain='comagro.com.br')
 
-    # Insert the header and body in the email
+    # Insert the email header and body
     msg = mail_bohe(msg, image_cid)
 
     # Attach the image and the csv to the email
-    add_attachment(msg, f'./../../images/signature.png')
-    add_attachment(msg, f'./../../cotacoes/{filepath}.csv')
+    add_attachment(msg, f'images\\signature.png')
+    a = add_attachment(msg, f'{filepath}')
 
-    cloud = 'nuvem@comagro.com.br'
+    # If the file was not found, return False
+    if a is False:
+        return False
 
     # Send the email to each recipient
     with smtplib.SMTP_SSL('smtp.hostinger.com', 465) as smtp:
         smtp.login(EMAIL_ADDRESS, EMAIL_PASS)
-        for email in emails:
-            msg['To'] = email
-            smtp.send_message(msg)
-        msg['To'] = cloud
-        smtp.send_message(msg)
 
-    smtp.quit()
+        for email in emails:
+            sender = EMAIL_ADDRESS
+            to = email
+
+            # Converts the email to a legible archive for the smtplib
+            raw = f"From: {sender}\r\nTo: {to}\r\n{msg.as_string()}"
+
+            # Send the mail
+            try:
+                smtp.sendmail(sender, to, raw)
+            except Exception as e:
+                messagebox.showinfo("Erro!", f"[Erro]: {e.__class__}\nEmail: {email} Lista: {emails}\n\nO programa continuará a enviar os emails restantes.")
