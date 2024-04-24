@@ -29,9 +29,12 @@ for i, x in enumerate(xAxis):
     label.grid(row=0, column=i + 1, sticky='sn', pady=10)
 
 # Function to add rows
+
+
 def add_row():
     row_number = len(entries) + 1
     row_entries = []
+
     if row_number < 51:
         # Y-axis label
         label = Label(root, text=str(row_number),
@@ -50,7 +53,7 @@ def add_row():
 
 
 def remove_row():
-    if entries:
+    if len(entries) > 1:
         last_row = entries.pop()
         for entry in last_row:
             entry.destroy()
@@ -151,12 +154,66 @@ def export_to_csv():
     df = pd.DataFrame(data, columns=xAxis)
     df.to_csv(filepath, index=False, encoding='utf-8-sig',
               sep=';')  # Save to CSV without the index
-    
-    
-    messagebox.showinfo("Sucesso!",
-                        f"Arquivo exportado para {filepath} e enviado para email")
+
+    email_entry(filepath)
 
     open_pdf_window()
+
+
+def email_entry(filepath):
+    email_window = Toplevel(root)
+    email_window.title("Escolher emails")
+    email_window.configure(bg='white')
+
+    # List to store all email entry widgets
+    email_entries = []
+
+    # Function to add a new email entry field
+
+    def add_email_entry():
+        entry = Entry(email_window, width=25)
+        entry.grid(row=len(email_entries), column=0,
+                   padx=5, pady=5, sticky="we")
+        email_entries.append(entry)
+        update_remove_button_state()
+
+    # Function to remove the last email entry field
+    def remove_email_entry():
+        if email_entries:
+            last_entry = email_entries.pop()
+            last_entry.destroy()
+            update_remove_button_state()
+
+    # Function to gather all emails and call send_email (placeholder for your actual send_email function)
+    def gather_emails_and_send():
+        emails = [entry.get() for entry in email_entries if entry.get()]
+        send_email(filepath, emails)
+        messagebox.showinfo("Sucesso!", f"Arquivo exportado para {
+                            filepath} e enviado para email")
+
+    # "+" button to add new email entries
+    add_button = Button(email_window, text="+", command=add_email_entry)
+    add_button.grid(row=0, column=1, padx=5, pady=5)
+
+    # "-" button to remove the last email entry
+    remove_button = Button(email_window, text="-",
+                           command=remove_email_entry)
+    remove_button.grid(row=1, column=1, padx=5, pady=5)
+
+    # "Send" button to gather emails and send
+    send_button = Button(email_window, text="Enviar",
+                         command=gather_emails_and_send)
+    send_button.grid(row=2, column=0, columnspan=2, padx=5, pady=5)
+
+    # Function to update the state of the "-" button
+    def update_remove_button_state():
+        if len(email_entries) > 1:
+            remove_button["state"] = "normal"
+        else:
+            remove_button["state"] = "disabled"
+
+    # Initial email entry
+    add_email_entry()
 
 
 # Buttons

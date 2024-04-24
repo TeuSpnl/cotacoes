@@ -1,10 +1,7 @@
 # SDG
-from email import encoders
 from email.mime.application import MIMEApplication
-from email.mime.base import MIMEBase
 from email.message import EmailMessage
 from email.mime.image import MIMEImage
-from email.mime.text import MIMEText
 from functions.secrets import senha
 from tkinter import messagebox
 # from functions.calen import log_dev
@@ -60,7 +57,7 @@ def mail_bohe(msg, image_c_id):
     # Create the email body and add the footer
     body = f"<p style='max-width: 70%;font-size: 13pt;'>Olá!" + \
         "</br>Envio a seguir uma cotação na planilha em anexo." + \
-        "</br>Solicito sua resposta assim que possível.<\p>" + \
+        "</br>Solicito sua resposta assim que possível.</p>" + \
         footer
 
     # Create the email footer
@@ -75,20 +72,22 @@ def mail_bohe(msg, image_c_id):
     return msg
 
 
-def send_email(archive, emails):
+def send_email(filepath, emails):
     """Envia o email ao cliente
 
     Args:
-        archive (int): name/number of the actual quotation
+        filepath (string): path of the actual quotation
         emails (list): list of emails to send the quotation
     """
-
+    
     ################################################### DELETE THIS SECTION ###################################################
     messagebox.showinfo(f"Os emails são {emails}")
 
     emails = ['ti@comagro.com.br', 'mateusspinola@comagro.com.br']
     ################################################### DELETE THIS SECTION ###################################################
 
+    filepath = f"./../../{filepath}"
+    
     # Cria um corpo de email e define o assunto
     msg = EmailMessage()
     msg['Subject'] = f'Cotação Comagro'
@@ -106,7 +105,7 @@ def send_email(archive, emails):
 
     # Attach the image and the csv to the email
     add_attachment(msg, f'./../../images/signature.png')
-    add_attachment(msg, f'./../../cotacoes/{archive}.csv')
+    add_attachment(msg, f'./../../cotacoes/{filepath}.csv')
 
     cloud = 'nuvem@comagro.com.br'
 
