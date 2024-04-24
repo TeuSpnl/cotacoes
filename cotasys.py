@@ -2,8 +2,13 @@ from tkinter import *
 from tkinter import messagebox, Toplevel, filedialog
 from tkinter.filedialog import asksaveasfilename
 from functions.mail import *
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Image, Spacer
+from reportlab.lib.units import inch
 import pandas as pd
 import os
+import csv
 import re
 
 # Define X and Y Axis
@@ -72,7 +77,7 @@ def clear_all():
         var.set('')
 
 
-def open_pdf_window():
+def open_pdf_window(filepath):
     new_window = Toplevel(root)
     new_window.title("Salvar como PDF?")
     new_window.geometry("200x125")
@@ -80,20 +85,79 @@ def open_pdf_window():
     Label(new_window, text="Salvar como PDF?").pack(pady=10)
 
     Button(
-        new_window, text="Sim", command=lambda: save_as_pdf(new_window),
+        new_window, text="Sim", command=lambda: save_as_pdf(new_window, filepath),
         width=10, bg='#FFFFF9').pack(
         side="left", padx=5, pady=5)
     Button(new_window, text="Não", command=new_window.destroy,
            width=10, bg='#FFFFF9').pack(side="right", padx=5, pady=5)
 
 
-def save_as_pdf(new_window):
+def save_as_pdf(new_window, csv_path):
     new_window.destroy()
-    file_path = asksaveasfilename(defaultextension=".pdf", filetypes=[
-                                  ("PDF files", "*.pdf")])
-    if file_path:
+
+    pdf_path = asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
+
+    # Create a PDF document with a specific filename and page size
+    doc = SimpleDocTemplate(pdf_path, pagesize=letter)
+
+    # Convert hexadecimal colors to Color objects
+    header_color = colors.HexColor('#585859')
+    row_color = colors.HexColor('#F2AC29')
+
+    # Create a list to hold the PDF elements
+    elements = []
+
+    # Add the logo at the top
+    logo = Image('images\\logo.png')
+    logo.drawHeight = 1.25 * inch * logo.drawHeight / logo.drawWidth
+    logo.drawWidth = 1.25 * inch
+    logo.hAlign = 'CENTER'
+    elements.append(logo)
+
+    # Add some space after the logo - adjust as necessary
+    elements.append(Spacer(1, 0.25 * inch))
+
+    # List to hold the data for the table
+    data = []
+
+    # Read the CSV file and append each row to the data list
+    with open(csv_path, newline='', encoding='utf-8-sig') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            if row:  # Ensure the row is not empty
+                # Split the single string in the row by ';' to form a list of fields
+                fields = row[0].split(';') if len(row) == 1 else row
+                print(fields)
+                data.append(fields)
+
+    # Create a table with the data
+    table = Table(data)
+
+    # Define a style for the table with specific properties for each cell
+    style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), header_color),  # Header background
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),  # Font for the header
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), row_color),  # Background for other rows
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),  # Grid lines for all cells
+        ('BOX', (0, 0), (-1, -1), 1, colors.black),  # Border around the table
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),  # Font for the rest of the table
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('PADDING', (0, 0), (-1, -1), 5)  # Padding in each cell
+    ])
+    table.setStyle(style)
+
+    # Append the table to the elements
+    elements.append(table)
+
+    # Build the PDF
+    doc.build(elements)
+
+    if 1 == 1:
         # Save data as PDF (simulation)
-        messagebox.showinfo("Salvar como PDF", f"PDF salvo em {file_path}")
+        messagebox.showinfo("Salvar como PDF", f"PDF salvo em {pdf_path}")
 
 
 def finalize():
@@ -211,7 +275,7 @@ def email_entry(filepath):
         else:
             messagebox.showinfo("Sucesso!", f"Arquivo exportado para {filepath} e enviado para email")
         email_window.destroy()
-        open_pdf_window()
+        open_pdf_window(filepath)
 
     # "+" button to add new email entries
     add_button = Button(email_window, text="+", command=add_email_entry)

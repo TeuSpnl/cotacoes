@@ -16,11 +16,6 @@ EMAIL_PASS = senha  # Senha do email do remetente
 
 def add_attachment(msg, filepath):
     """    Lê e adiciona anexo ao email    """
-
-    print(filepath)
-
-    print(os.path.isfile(filepath))
-
     if not os.path.isfile(filepath):
         # Caso não haja arquivo no caminho especificado
         messagebox.showinfo("Erro!", f"Planilha não encontrada. Entrar em contato com o magnífico TI.")
@@ -48,7 +43,9 @@ def add_attachment(msg, filepath):
             maintype = 'text'
             subtype = 'csv'
             attachment = MIMEApplication(file_data, _subtype=subtype)
-            attachment.add_header('Content-Disposition', 'attachment', filename='cotacao_comagro.csv', filepath=os.path.basename(filepath))
+            attachment.add_header(
+                'Content-Disposition', 'attachment', filename='cotacao_comagro.csv',
+                filepath=os.path.basename(filepath))
         msg.attach(attachment)
 
 
@@ -80,13 +77,6 @@ def send_email(filepath, emails):
         filepath (string): path of the actual quotation
         emails (list): list of emails to send the quotation
     """
-
-    ################################################### DELETE THIS SECTION ###################################################
-    messagebox.showinfo("Emails", f"Os emails são {emails}")
-
-    emails = ['noiergamer2014@gmail.com', 'mateus.spinolaa@gmail.com']
-    ################################################### DELETE THIS SECTION ###################################################
-
     # Cria um corpo de email e define o assunto
     msg = EmailMessage()
     msg['Subject'] = f'Cotação Comagro'
@@ -123,4 +113,5 @@ def send_email(filepath, emails):
             try:
                 smtp.sendmail(sender, to, raw)
             except Exception as e:
-                messagebox.showinfo("Erro!", f"[Erro]: {e.__class__}\nEmail: {email} Lista: {emails}\n\nO programa continuará a enviar os emails restantes.")
+                messagebox.showinfo("Erro!", f"[Erro]: {e.__class__}\nEmail: {email} Lista: {
+                                    emails}\n\nO programa continuará a enviar os emails restantes.")
