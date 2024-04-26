@@ -1,5 +1,5 @@
 from tkinter import *
-from tkinter import messagebox, Toplevel, filedialog
+from tkinter import messagebox, Toplevel
 from tkinter.filedialog import asksaveasfilename
 from functions.mail import *
 from reportlab.lib import colors
@@ -108,11 +108,14 @@ def save_as_pdf(new_window, csv_path):
     elements = []
 
     # Add the logo at the top
-    logo = Image('images\\logo.png')
-    logo.drawHeight = 1.25 * inch * logo.drawHeight / logo.drawWidth
-    logo.drawWidth = 1.25 * inch
-    logo.hAlign = 'CENTER'
-    elements.append(logo)
+    try:
+        logo = Image('images\\logo.png')
+        logo.drawHeight = 1.25 * inch * logo.drawHeight / logo.drawWidth
+        logo.drawWidth = 1.25 * inch
+        logo.hAlign = 'CENTER'
+        elements.append(logo)
+    except:
+        pass
 
     # Add some space after the logo - adjust as necessary
     elements.append(Spacer(1, 0.25 * inch))
@@ -127,7 +130,6 @@ def save_as_pdf(new_window, csv_path):
             if row:  # Ensure the row is not empty
                 # Split the single string in the row by ';' to form a list of fields
                 fields = row[0].split(';') if len(row) == 1 else row
-                print(fields)
                 data.append(fields)
 
     # Create a table with the data
