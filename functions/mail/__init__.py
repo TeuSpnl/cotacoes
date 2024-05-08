@@ -10,7 +10,7 @@ import os
 import mimetypes
 import smtplib
 
-EMAIL_ADDRESS = 'noreply-faturas@comagro.com.br'  # Endereço de email do remetente
+EMAIL_ADDRESS = 'vendas@comagro.com.br'  # Endereço de email do remetente
 EMAIL_PASS = senha  # Senha do email do remetente
 
 

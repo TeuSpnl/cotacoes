@@ -12,10 +12,10 @@ import csv
 import re
 
 # Define X and Y Axis
-xAxis = ["Código", "Nome", "Quantidade"]
+xAxis = ["Código", "Nome", "Quantidade", "Máquina"]
 
 # Initial rows count
-initial_rows = 3
+initial_rows = 1
 
 # Cells will hold the string vars and the entries
 cells = {}
@@ -166,6 +166,9 @@ def finalize():
     new_window = Toplevel(root)
     new_window.title("Revisão")
     new_window.configure(bg='white', padx=10, pady=10)
+    
+    # Check if there is any data
+    filtered_data = []
 
     # Display the headers
     for i, header in enumerate(xAxis):
@@ -177,6 +180,18 @@ def finalize():
         # Row number label
         Label(new_window, text=str(row_index), bg='white', width=5).grid(
             row=row_index, column=0, padx=2, pady=2)
+
+        for entry in row_entries:
+            if not any(entry.get().strip()):
+                # entry.replace("", "Não informado")
+                print(any(entry.get().strip()))
+                print(entry.get())
+
+        if not filtered_data:
+            messagebox.showinfo("ERRO!", "Sem dados")
+            new_window.destroy()
+            return
+
         for col_index, entry in enumerate(row_entries):
             value = entry.get()
             Label(new_window, text=value, bg="#f0f0f0", width=30).grid(
@@ -223,7 +238,7 @@ def export_to_csv():
     df = pd.DataFrame(data, columns=xAxis)
     df.to_csv(filepath, index=False, encoding='utf-8-sig', sep=';')  # Save to CSV without the index
 
-    email_entry(filepath)
+    gather_emails_and_send(filepath)
 
 # Function to validate email addresses
 
@@ -234,86 +249,85 @@ def is_valid_email(email):
     pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
     return re.match(pattern, email) is not None
 
+# Function to gather all emails and call send_email (placeholder for your actual send_email function)
 
-def email_entry(filepath):
-    email_window = Toplevel(root)
-    email_window.title("Adicionar emails")
-    email_window.configure(bg='white')
-    label = Label(email_window, text="Adicionar emails", font=("Arial", 14))
-    label.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
 
-    # List to store all email entry widgets
-    email_entries = []
+def gather_emails_and_send(filepath):
+    email = ['compras@comagro.com.br']
+    a = send_email(filepath, email)
+    if a is False:
+        messagebox.showinfo("Erro!", f"Arquivo não encontrado. Entrar em contato com o magnífico TI.")
+    else:
+        messagebox.showinfo("Sucesso!", f"Arquivo exportado para {filepath} e enviado para email")
+    open_pdf_window(filepath)
 
-    # Function to add a new email entry field
 
-    def add_email_entry():
-        entry = Entry(email_window, width=25)
-        entry.grid(row=len(email_entries) + 1, column=0, padx=5, pady=5, sticky="we")
-        email_entries.append(entry)
-        entry.bind('<KeyRelease>', validate_emails)  # Bind key release event to validate emails
-        update_remove_button_state()
-        update_layout()
+# def email_entry(filepath):
+#     email_window = Toplevel(root)
+#     email_window.title("Adicionar emails")
+#     email_window.configure(bg='white')
+#     label = Label(email_window, text="Adicionar emails", font=("Arial", 14))
+#     label.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
 
-    # Function to remove the last email entry field
-    def remove_email_entry():
-        if email_entries:
-            entry_to_remove = email_entries.pop()
-            entry_to_remove.destroy()
-            update_remove_button_state()
-            update_layout()
-            validate_emails(None)  # Validate emails after removal
+#     # List to store all email entry widgets
+#     email_entries = []
 
-    def validate_emails(event):
-        all_valid = all(is_valid_email(entry.get()) for entry in email_entries if entry.get())
-        send_button.config(state='normal' if all_valid else 'disabled')
+#     # Function to add a new email entry field
 
-    # Function to gather all emails and call send_email (placeholder for your actual send_email function)
-    def gather_emails_and_send():
-        emails = [entry.get() for entry in email_entries if entry.get()]
-        a = send_email(filepath, emails)
-        if a is False:
-            messagebox.showinfo("Erro!", f"Arquivo não encontrado. Entrar em contato com o magnífico TI.")
-        else:
-            messagebox.showinfo("Sucesso!", f"Arquivo exportado para {filepath} e enviado para email")
-        email_window.destroy()
-        open_pdf_window(filepath)
+#     def add_email_entry():
+#         entry = Entry(email_window, width=25)
+#         entry.grid(row=len(email_entries) + 1, column=0, padx=5, pady=5, sticky="we")
+#         email_entries.append(entry)
+#         entry.bind('<KeyRelease>', validate_emails)  # Bind key release event to validate emails
+#         update_remove_button_state()
+#         update_layout()
 
-    # "+" button to add new email entries
-    add_button = Button(email_window, text="+", command=add_email_entry)
-    add_button.grid(row=1, column=1, padx=5, pady=5)
+#     # Function to remove the last email entry field
+#     def remove_email_entry():
+#         if email_entries:
+#             entry_to_remove = email_entries.pop()
+#             entry_to_remove.destroy()
+#             update_remove_button_state()
+#             update_layout()
+#             validate_emails(None)  # Validate emails after removal
 
-    # "-" button to remove the last email entry
-    remove_button = Button(email_window, text="-",
-                           command=remove_email_entry, state='disabled')
-    remove_button.grid(row=2, column=1, padx=5, pady=5)
+#     def validate_emails(event):
+#         all_valid = all(is_valid_email(entry.get()) for entry in email_entries if entry.get())
+#         send_button.config(state='normal' if all_valid else 'disabled')
 
-    # "Send" button to gather emails and send
-    send_button = Button(email_window, text="Enviar",
-                         command=gather_emails_and_send, state='disabled')
-    send_button.grid(row=50, column=0, columnspan=2, padx=5, pady=5)
+#     # "+" button to add new email entries
+#     add_button = Button(email_window, text="+", command=add_email_entry)
+#     add_button.grid(row=1, column=1, padx=5, pady=5)
 
-    # Function to update the state of the "-" button
-    def update_remove_button_state():
-        remove_button.config(state='normal' if len(email_entries) > 1 else 'disabled')
+#     # "-" button to remove the last email entry
+#     remove_button = Button(email_window, text="-",
+#                            command=remove_email_entry, state='disabled')
+#     remove_button.grid(row=2, column=1, padx=5, pady=5)
 
-    def update_layout():
-        for index, entry in enumerate(email_entries):
-            entry.grid(row=index+1, column=0)
+#     # "Send" button to gather emails and send
+#     send_button = Button(email_window, text="Enviar",
+#                          command=gather_emails_and_send, state='disabled')
+#     send_button.grid(row=50, column=0, columnspan=2, padx=5, pady=5)
 
-    # Initial email entry
-    add_email_entry()
+#     # Function to update the state of the "-" button
+#     def update_remove_button_state():
+#         remove_button.config(state='normal' if len(email_entries) > 1 else 'disabled')
+
+#     def update_layout():
+#         for index, entry in enumerate(email_entries):
+#             entry.grid(row=index+1, column=0)
+
+#     # Initial email entry
+#     add_email_entry()
 
 
 # Buttons
 Button(root, text="Limpar Tudo", command=clear_all).grid(
-    column=1, row=52, columnspan=2, pady=(10, 5))
+    column=1, row=55, columnspan=3, pady=(10, 5))
 Button(root, text="Finalizar", command=finalize).grid(
-    column=2, row=52, columnspan=2, pady=(10, 5))
+    column=2, row=55, columnspan=3, pady=(10, 5))
 Button(root, text="+", command=add_row,
-       width=5).grid(column=4, row=0, padx=10)
-Button(root, text="-", command=remove_row,
-       width=5).grid(column=4, row=1, padx=10)
+       width=5).grid(column=10, row=14, padx=10)
 
 # Run the Mainloop
 root.mainloop()
