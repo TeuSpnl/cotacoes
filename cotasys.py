@@ -270,7 +270,7 @@ def export_to_csv(new_window):
     # Gather data from entries
     data = []
     for row_entries in entries:
-        row_data = [entry.get() for entry in row_entries]
+        row_data = [entry.get() for entry in row_entries[1:]]
         data.append(row_data)
 
     # Create a DataFrame and write to CSV
