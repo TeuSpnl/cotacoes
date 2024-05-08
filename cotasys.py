@@ -36,12 +36,17 @@ for i, x in enumerate(xAxis):
 
 
 def refresh_grid_display():
+    """ Function to refresh the grid display after adding or removing rows
+    """
     for index, row_entries in enumerate(entries):
         for col_index, entry in enumerate(row_entries[1:], start=1):
             entry.grid(row=index + 1, column=col_index)  # Re-grid the entry at the correct position
 
 
 def update_row_labels():
+    """ Function to update the row number labels after adding or removing rows
+    """
+
     # First, clear all existing row number labels
     for row in entries:
         row[0].grid_forget()  # This forgets the grid configuration for the label
@@ -98,28 +103,19 @@ for _ in range(initial_rows):
 
 
 def clear_all():
+    """ Function to clear all entries in the grid
+    """
+
     for row in entries:
         for entry in row:
             entry.delete(0, END)
             entry.insert(0, "")
 
 
-def open_pdf_window(filepath):
-    new_window = Toplevel(root)
-    new_window.title("Salvar como PDF?")
-    new_window.geometry("200x125")
-    new_window.configure(bg='white')
-    Label(new_window, text="Salvar como PDF?").pack(pady=10)
-
-    Button(
-        new_window, text="Sim", command=lambda: save_as_pdf(new_window, filepath),
-        width=10, bg='#FFFFF9').pack(
-        side="left", padx=5, pady=5)
-    Button(new_window, text="Não", command=new_window.destroy,
-           width=10, bg='#FFFFF9').pack(side="right", padx=5, pady=5)
-
-
 def finalize():
+    """ Function to finalize the quotation and display the data in a new window
+    """
+
     new_window = Toplevel(root)
     new_window.title("Revisão")
     new_window.configure(bg='white', padx=10, pady=10)
@@ -157,8 +153,9 @@ def finalize():
 
         for col_index, entry in enumerate(row_entries[1:]):
             if not entry.get().strip():
-                entry.delete(0, END)
-                entry.insert(0, "N/A")
+                new_window.destroy()
+                messagebox.showinfo("Erro!", "Por favor, preencha todos os campos.")
+                return
 
             Label(new_window, text=entry.get(), bg="#f0f0f0", width=30).grid(
                 row=row_index, column=col_index + 1, padx=2, pady=2)
@@ -171,18 +168,24 @@ def finalize():
     Button(btn_frame, text="Voltar", command=new_window.destroy, bg='white').pack(side=LEFT, padx=10)
 
 
-def get_next_filename():
-    """Function to get the next filename for the CSV file
+def get_next_filename(type='csv'):
+    """Function to get the next filename for the CSV or PDF file
 
     Returns:
-        String: Path of the next CSV file
+        String: Path of the next file
     """
 
     directory = "cotacoes"
     if not os.path.exists(directory):
         os.makedirs(directory)
-    files = [f for f in os.listdir(directory) if os.path.isfile(
-        os.path.join(directory, f)) and f.endswith('.csv')]
+
+    if type == 'pdf':
+        files = [f for f in os.listdir(directory) if os.path.isfile(
+            os.path.join(directory, f)) and f.endswith('.pdf')]
+    else:
+        files = [f for f in os.listdir(directory) if os.path.isfile(
+            os.path.join(directory, f)) and f.endswith('.csv')]
+
     highest_number = 0
     for file in files:
         try:
@@ -194,10 +197,72 @@ def get_next_filename():
     return os.path.join(directory, f"{highest_number + 1}.csv")
 
 
-def save_as_pdf(new_window, csv_path):
+def export_to_csv(new_window):
+    """ Function to export the data to a CSV file
+
+    Args:
+        new_window (Tk Window): The window to be destroyed
+    """
+    filepath = get_next_filename()
+
+    # Gather data from entries
+    data = []
+    for row_entries in entries:
+        row_data = [entry.get() for entry in row_entries[1:]]
+        data.append(row_data)
+
+    # Create a DataFrame and write to CSV
+    df = pd.DataFrame(data, columns=xAxis)
+    df.to_csv(filepath, index=False, encoding='utf-8-sig', sep=';')  # Save to CSV without the index
+
+    gather_emails_and_send(filepath)
+    new_window.destroy()
+
+
+def open_pdf_window(filepath):
+    """Function to open a new window to ask if the user wants to save the file as PDF
+
+    Args:
+        filepath (String): Path of the CSV file to be saved as PDF
+    """
+
+    new_window = Toplevel(root)
+    new_window.title("Salvar como PDF?")
+    new_window.geometry("200x125")
+    new_window.configure(bg='white')
+    Label(new_window, text="Salvar como PDF?").pack(pady=10)
+
+    Button(
+        new_window, text="Sim", command=lambda: get_pdf_path(new_window, filepath),
+        width=10, bg='#FFFFF9').pack(
+        side="left", padx=5, pady=5)
+    Button(new_window, text="Não", command=new_window.destroy,
+           width=10, bg='#FFFFF9').pack(side="right", padx=5, pady=5)
+
+
+def get_pdf_path(new_window, csv_path):
+    """Function to get the path where the PDF file should be saved
+
+    Args:
+        new_window (TK Window): The window to be destroyed
+
+    Returns:
+        String: Path of the PDF file
+    """
     new_window.destroy()
 
     pdf_path = asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
+
+    save_as_pdf(csv_path, pdf_path)
+
+
+def save_as_pdf(csv_path, pdf_path=get_next_filename('pdf')):
+    """ Function to save the CSV file as PDF
+
+    Args:
+        csv_path (String): Path of the CSV file to be saved as PDF
+        pdf_path (String): Path of the PDF file
+    """
 
     # Create a PDF document with a specific filename and page size
     doc = SimpleDocTemplate(pdf_path, pagesize=letter)
@@ -262,23 +327,6 @@ def save_as_pdf(new_window, csv_path):
     if 1 == 1:
         # Save data as PDF (simulation)
         messagebox.showinfo("Salvar como PDF", f"PDF salvo em {pdf_path}")
-
-
-def export_to_csv(new_window):
-    filepath = get_next_filename()
-
-    # Gather data from entries
-    data = []
-    for row_entries in entries:
-        row_data = [entry.get() for entry in row_entries[1:]]
-        data.append(row_data)
-
-    # Create a DataFrame and write to CSV
-    df = pd.DataFrame(data, columns=xAxis)
-    df.to_csv(filepath, index=False, encoding='utf-8-sig', sep=';')  # Save to CSV without the index
-
-    gather_emails_and_send(filepath)
-    new_window.destroy()
 
 
 def is_valid_email(email):
