@@ -194,7 +194,11 @@ def get_next_filename(type='csv'):
                 highest_number = number
         except ValueError:
             continue
-    return os.path.join(directory, f"{highest_number + 1}.csv")
+
+    if type == 'pdf':
+        return os.path.join(directory, f"{highest_number}.pdf")
+    else:
+        return os.path.join(directory, f"{highest_number + 1}.csv")
 
 
 def export_to_csv(new_window):
@@ -203,6 +207,8 @@ def export_to_csv(new_window):
     Args:
         new_window (Tk Window): The window to be destroyed
     """
+    new_window.destroy()
+
     filepath = get_next_filename()
 
     # Gather data from entries
@@ -215,8 +221,7 @@ def export_to_csv(new_window):
     df = pd.DataFrame(data, columns=xAxis)
     df.to_csv(filepath, index=False, encoding='utf-8-sig', sep=';')  # Save to CSV without the index
 
-    gather_emails_and_send(filepath)
-    new_window.destroy()
+    gather_emails_and_send(filepath, save_as_pdf(filepath))
 
 
 def open_pdf_window(filepath):
@@ -261,7 +266,7 @@ def save_as_pdf(csv_path, pdf_path=get_next_filename('pdf')):
 
     Args:
         csv_path (String): Path of the CSV file to be saved as PDF
-        pdf_path (String): Path of the PDF file
+        pdf_path (String): [Optional] Path of the PDF file
     """
 
     # Create a PDF document with a specific filename and page size
@@ -328,6 +333,8 @@ def save_as_pdf(csv_path, pdf_path=get_next_filename('pdf')):
         # Save data as PDF (simulation)
         messagebox.showinfo("Salvar como PDF", f"PDF salvo em {pdf_path}")
 
+    return pdf_path
+
 
 def is_valid_email(email):
     """Function to validate email addresses
@@ -345,19 +352,21 @@ def is_valid_email(email):
     return re.match(pattern, email) is not None
 
 
-def gather_emails_and_send(filepath):
+def gather_emails_and_send(filepath, pdf_path):
     """Function to gather all emails and call send_email()
 
     Args:
         filepath (string): path of the actual quotation
+        pdf_path (string): path of the PDF file
     """
 
     email = ['compras@comagro.com.br']
-    a = send_email(filepath, email)
+    a = send_email(filepath, pdf_path, email)
     if a is False:
         messagebox.showinfo("Erro!", f"Arquivo não encontrado. Entrar em contato com o magnífico TI.")
     else:
         messagebox.showinfo("Sucesso!", f"Arquivo exportado para {filepath} e enviado para email")
+
     open_pdf_window(filepath)
 
 

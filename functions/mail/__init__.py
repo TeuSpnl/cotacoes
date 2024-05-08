@@ -38,6 +38,12 @@ def add_attachment(msg, filepath):
             attachment = MIMEImage(file_data, _subtype=subtype)
             attachment.add_header('Content-ID', '<{}>'.format(os.path.basename(filepath)))
             attachment.add_header('Content-Disposition', 'inline', filepath=os.path.basename(filepath))
+        elif subtype == 'pdf':
+            attachment = MIMEApplication(file_data, _subtype=subtype)
+            attachment.add_header(
+                'Content-Disposition', 'attachment', filename='cotacao_comagro.pdf',
+                filepath=os.path.basename(filepath))
+            msg.attach(attachment)
         else:
             # For all other file types, use MIMEApplication
             maintype = 'text'
@@ -85,11 +91,12 @@ def mail_bohe(msg, image_c_id):
     return msg
 
 
-def send_email(filepath, emails):
+def send_email(csv_path, pdf_path, emails):
     """Envia o email ao cliente
 
     Args:
-        filepath (string): path of the actual quotation
+        csv_path (string): path of the actual quotation
+        pdf_path (string): path of the pdf quotation
         emails (list): list of emails to send the quotation
     """
     # Cria um corpo de email e define o assunto
@@ -106,7 +113,10 @@ def send_email(filepath, emails):
     msg = mail_bohe(msg, image_cid)
 
     # Attach the csv to the email
-    a = add_attachment(msg, f'{filepath}')
+    a = add_attachment(msg, f'{csv_path}')
+
+    # Attach the pdf to the email
+    a = add_attachment(msg, f'{pdf_path}')
 
     # If the file was not found, return False
     if a is False:
