@@ -162,10 +162,23 @@ def finalize():
 
     # Buttons for actions
     btn_frame = Frame(new_window, bg='white')
-    btn_frame.grid(row=len(entries) + 1, columnspan=len(xAxis) + 1, pady=(15, 0))
+    btn_frame.grid(row=len(entries) + 1, column=2, pady=(15, 0))
 
-    Button(btn_frame, text="Concluir", command=lambda: export_to_csv(new_window)).pack(side=RIGHT, padx=10)
     Button(btn_frame, text="Voltar", command=new_window.destroy, bg='white').pack(side=LEFT, padx=10)
+    Button(btn_frame, text="Salvar como PDF", command=lambda: guide_save_pdf(new_window)).pack(side=LEFT, padx=10)
+    Button(btn_frame, text="Concluir", command=lambda: guide_finalize(new_window)).pack(side=RIGHT, padx=10)
+
+
+def guide_save_pdf(new_window):
+    """Function to guide the user to save the file as PDF
+    """
+    filepath = export_to_csv(new_window)
+    get_pdf_path(new_window, filepath)
+
+
+def guide_finalize(new_window):
+    filepath = export_to_csv(new_window, TRUE)
+    gather_emails_and_send(filepath, save_as_pdf(filepath))
 
 
 def get_next_filename(type='csv'):
@@ -179,12 +192,7 @@ def get_next_filename(type='csv'):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    if type == 'pdf':
-        files = [f for f in os.listdir(directory) if os.path.isfile(
-            os.path.join(directory, f)) and f.endswith('.pdf')]
-    else:
-        files = [f for f in os.listdir(directory) if os.path.isfile(
-            os.path.join(directory, f)) and f.endswith('.csv')]
+    files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f)) and f.endswith('.csv')]
 
     highest_number = 0
     for file in files:
@@ -196,18 +204,19 @@ def get_next_filename(type='csv'):
             continue
 
     if type == 'pdf':
-        return os.path.join(directory, f"{highest_number}.pdf")
+        return os.path.join(directory, f"{highest_number:05d}.pdf")
     else:
-        return os.path.join(directory, f"{highest_number + 1}.csv")
+        return os.path.join(directory, f"{highest_number + 1:05d}.csv")
 
 
-def export_to_csv(new_window):
+def export_to_csv(new_window, i=FALSE):
     """ Function to export the data to a CSV file
 
     Args:
         new_window (Tk Window): The window to be destroyed
     """
-    new_window.destroy()
+    if i:
+        new_window.destroy()
 
     filepath = get_next_filename()
 
@@ -221,7 +230,7 @@ def export_to_csv(new_window):
     df = pd.DataFrame(data, columns=xAxis)
     df.to_csv(filepath, index=False, encoding='utf-8-sig', sep=';')  # Save to CSV without the index
 
-    gather_emails_and_send(filepath, save_as_pdf(filepath))
+    return filepath
 
 
 def open_pdf_window(filepath):
@@ -238,36 +247,42 @@ def open_pdf_window(filepath):
     Label(new_window, text="Salvar como PDF?").pack(pady=10)
 
     Button(
-        new_window, text="Sim", command=lambda: get_pdf_path(new_window, filepath),
+        new_window, text="Sim", command=lambda: get_pdf_path(new_window, filepath, TRUE),
         width=10, bg='#FFFFF9').pack(
         side="left", padx=5, pady=5)
     Button(new_window, text="Não", command=new_window.destroy,
            width=10, bg='#FFFFF9').pack(side="right", padx=5, pady=5)
 
 
-def get_pdf_path(new_window, csv_path):
+def get_pdf_path(new_window, csv_path, i=FALSE):
     """Function to get the path where the PDF file should be saved
 
     Args:
         new_window (TK Window): The window to be destroyed
+        csv_path (String): Path of the CSV file to be saved as PDF
+        i (boolean): [Optional] True if the window should be destroyed
 
     Returns:
         String: Path of the PDF file
     """
-    new_window.destroy()
+    if i:
+        new_window.destroy()
 
     pdf_path = asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
 
     save_as_pdf(csv_path, pdf_path)
 
 
-def save_as_pdf(csv_path, pdf_path=get_next_filename('pdf')):
+def save_as_pdf(csv_path, pdf_path=''):
     """ Function to save the CSV file as PDF
 
     Args:
         csv_path (String): Path of the CSV file to be saved as PDF
         pdf_path (String): [Optional] Path of the PDF file
     """
+
+    if pdf_path.strip() == '':
+        pdf_path = get_next_filename('pdf')
 
     # Create a PDF document with a specific filename and page size
     doc = SimpleDocTemplate(pdf_path, pagesize=letter)
@@ -361,7 +376,7 @@ def gather_emails_and_send(filepath, pdf_path):
     """
 
     email = ['compras@comagro.com.br']
-    a = send_email(filepath, pdf_path, email)
+    a = send_email(filepath, pdf_path, email, user)
     if a is False:
         messagebox.showinfo("Erro!", f"Arquivo não encontrado. Entrar em contato com o magnífico TI.")
     else:

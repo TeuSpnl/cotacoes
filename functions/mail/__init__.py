@@ -18,7 +18,7 @@ def add_attachment(msg, filepath):
     """    Lê e adiciona anexo ao email    """
     if not os.path.isfile(filepath):
         # Caso não haja arquivo no caminho especificado
-        messagebox.showinfo("Erro!", f"Planilha não encontrada. Entrar em contato com o magnífico TI.")
+        messagebox.showinfo("Erro!", f"Planilha não encontrada. Entrar em contato com o TI.")
         return False
 
     # Determine the content type of the file
@@ -55,20 +55,28 @@ def add_attachment(msg, filepath):
         msg.attach(attachment)
 
 
-def mail_bohe(msg, image_c_id):
-    """    Insere o header e o corpo no email    """
-    signature = ''
+def mail_bohe(msg, user):
+    """ Creates email's body
 
-    try:
-        signature = f'<img src="cid:{image_c_id[1:-1]}", style="max-width: 500px; text-align: left;">'
-    except:
-        messagebox.showinfo(
-            "Erro!",
-            "Assinatura não encontrada. Entrar em contato com o magnífico TI.\nO programa continuará normalmente.")
+    Args:
+        msg (EmailMessage): EmailMessage object to add the body
+        user (String): User that asked for the quotation
+
+    Returns:
+        EmailMessage: Returns the EmailMessage object with the body
+    """
+    # signature = ''
+
+    # try:
+    #     signature = f'<img src="cid:{image_c_id[1:-1]}", style="max-width: 500px; text-align: left;">'
+    # except:
+    #     messagebox.showinfo(
+    #         "Erro!",
+    #         "Assinatura não encontrada. Entrar em contato com o TI.\nO programa continuará normalmente.")
 
     # Create the email footer
     footer = ("<div style='border:none;border-bottom:solid windowtext 1.0pt;padding:0cm 0cm 1.0pt 0cm'><p class='MsoNormal' style='border:none;padding:0cm'><span><u></u>&nbsp;<u></u></span></p></div>" +
-              "<p></p><p style='max-width: 70%;font-size: 12pt;'>Atenciosamente,<br/>") + signature
+              f"<p></p><p style='max-width: 70%;font-size: 12pt;'>Atenciosamente,<br/>&emsp;{user}</p>")
 
     # Create the email body and add the footer
     body = f"<p style='max-width: 70%;font-size: 13pt;'>Olá!" + \
@@ -81,23 +89,24 @@ def mail_bohe(msg, image_c_id):
     # Add the body, with the footer, to the email
     msg.add_alternative(body, subtype='html')
 
-    # Open the signature image and attach it to the email
-    with open('images\\signature.png', 'rb') as img:
-        # Guess the content type of the image and split into main and subtype
-        maintype, subtype = mimetypes.guess_type(img.name)[0].split('/')
-        # Attach the image to the email with the specified Content-ID
-        msg.get_payload()[1].add_related(img.read(), maintype=maintype, subtype=subtype, cid=image_c_id)
+    # # Open the signature image and attach it to the email
+    # with open('images\\signature.png', 'rb') as img:
+    #     # Guess the content type of the image and split into main and subtype
+    #     maintype, subtype = mimetypes.guess_type(img.name)[0].split('/')
+    #     # Attach the image to the email with the specified Content-ID
+    #     msg.get_payload()[1].add_related(img.read(), maintype=maintype, subtype=subtype, cid=image_c_id)
 
     return msg
 
 
-def send_email(csv_path, pdf_path, emails):
+def send_email(csv_path, pdf_path, emails, user):
     """Envia o email ao cliente
 
     Args:
         csv_path (string): path of the actual quotation
         pdf_path (string): path of the pdf quotation
         emails (list): list of emails to send the quotation
+        user (string): user that asked for the quotation
     """
     # Cria um corpo de email e define o assunto
     msg = EmailMessage()
@@ -110,10 +119,14 @@ def send_email(csv_path, pdf_path, emails):
     image_cid = make_msgid(domain='comagro.com.br')
 
     # Insert the email header and body
-    msg = mail_bohe(msg, image_cid)
+    msg = mail_bohe(msg, user)
 
     # Attach the csv to the email
     a = add_attachment(msg, f'{csv_path}')
+
+    # If the file was not found, return False
+    if a is False:
+        return False
 
     # Attach the pdf to the email
     a = add_attachment(msg, f'{pdf_path}')

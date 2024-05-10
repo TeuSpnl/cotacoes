@@ -3,4 +3,5 @@
 dist.rar
 cotasys.spec
 /build
-/secrets
+/functions/secrets
+/dist/cotacoes
