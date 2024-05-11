@@ -1,11 +1,13 @@
 from tkinter import *
+from tkinter import ttk
 from tkinter import messagebox, Toplevel
 from tkinter.filedialog import asksaveasfilename
 from functions.mail import *
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Image, Spacer
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Image, Spacer, Paragraph
 from reportlab.lib.units import inch
+from reportlab.lib.styles import getSampleStyleSheet
 import pandas as pd
 import os
 import csv
@@ -32,7 +34,37 @@ root.configure(bg='white')
 # Display the X-axis labels with enumerate
 for i, x in enumerate(xAxis):
     label = Label(root, text=x, width=15, background='white')
-    label.grid(row=0, column=i + 1, sticky='sn', pady=10)
+    label.grid(row=1, column=i + 1, sticky='sn', pady=10)
+
+
+def setup_top_fields():
+    # Create a frame to hold the new fields at the top of the window
+    top_frame = Frame(root, bg='white')
+    top_frame.grid(row=0, column=0, columnspan=4, sticky='ew', padx=10, pady=(15, 5))
+
+    # Máquinas entry field
+    Label(top_frame, text="Máquinas:", bg='white').pack(side='left', padx=10)
+    maquinas_entry = Entry(top_frame, width=20, bg='#FFFFF9')
+    maquinas_entry.pack(side='left')
+
+    # Listbox for selecting names
+    names_combobox = ttk.Combobox(
+        top_frame, values=["Ju", "Palmiro", "Tom"],
+        state="readonly", width=15, background='#FFFFF9')
+    names_combobox.pack(side='right', padx=10)
+    Label(top_frame, text="Usuário:", bg='white').pack(side='right', padx=10)
+
+    return maquinas_entry, names_combobox
+
+
+def validate_inputs():
+    if not maquinas_entry.get().strip():
+        messagebox.showerror("Erro!", "Por favor, insira o nome das máquinas.")
+        return False
+    if not user.get():
+        messagebox.showerror("Erro!", "Por favor, selecione o usuário.")
+        return False
+    return True
 
 
 def refresh_grid_display():
@@ -40,7 +72,7 @@ def refresh_grid_display():
     """
     for index, row_entries in enumerate(entries):
         for col_index, entry in enumerate(row_entries[1:], start=1):
-            entry.grid(row=index + 1, column=col_index)  # Re-grid the entry at the correct position
+            entry.grid(row=index + 2, column=col_index)  # Re-grid the entry at the correct position
 
 
 def update_row_labels():
@@ -71,14 +103,14 @@ def add_row():
     if row_number <= 50:
         # Create a label for the row number
         label = Label(root, text=str(row_number), width=5, bg='white')
-        label.grid(row=row_number, column=0)
+        label.grid(row=row_number + 1, column=0)
         row_entries.append(label)
 
         # Create an entry for each column
         for xcoor, x in enumerate(xAxis):
             var = StringVar(root, '')
             e = Entry(root, textvariable=var, width=30, bg='#FFFFF9')
-            e.grid(row=row_number, column=xcoor + 1)
+            e.grid(row=row_number + 1, column=xcoor + 1)
             row_entries.append(e)
         entries.append(row_entries)
     else:
@@ -106,7 +138,7 @@ def clear_all():
     """ Function to clear all entries in the grid
     """
 
-    for row in entries:
+    for row in entries[1:]:
         for entry in row:
             entry.delete(0, END)
             entry.insert(0, "")
@@ -115,6 +147,9 @@ def clear_all():
 def finalize():
     """ Function to finalize the quotation and display the data in a new window
     """
+
+    if not validate_inputs():
+        return
 
     new_window = Toplevel(root)
     new_window.title("Revisão")
@@ -164,7 +199,7 @@ def finalize():
     btn_frame = Frame(new_window, bg='white')
     btn_frame.grid(row=len(entries) + 1, column=2, pady=(15, 0))
 
-    Button(btn_frame, text="Voltar", command=new_window.destroy, bg='white').pack(side=LEFT, padx=10)
+    Button(btn_frame, text="Voltar", command=new_window.destroy).pack(side=LEFT, padx=10)
     Button(btn_frame, text="Salvar como PDF", command=lambda: guide_save_pdf(new_window)).pack(side=LEFT, padx=10)
     Button(btn_frame, text="Concluir", command=lambda: guide_finalize(new_window)).pack(side=RIGHT, padx=10)
 
@@ -220,14 +255,40 @@ def export_to_csv(new_window, i=FALSE):
 
     filepath = get_next_filename()
 
-    # Gather data from entries
+    # Data list to hold the data for the CSV file
     data = []
+
+    data.append(xAxis)
+
+    # Gather data from entries and include in the data list
     for row_entries in entries:
         row_data = [entry.get() for entry in row_entries[1:]]
         data.append(row_data)
 
+    # Include an empty row for spacing
+    data.append('')
+
+    # Include Machines field
+    data.append(['Máquinas'])
+    data.append(maquinas_entry.get().split(';'))
+
+    # Include an empty row for spacing
+    data.append('')
+
+    # Include User field
+    data.append(['Usuário'])
+    data.append([user.get()])
+
+    # Find the maximum length of any row in the data
+    max_columns = max(len(row) for row in data)
+
+    # Create a model row with the maximum number of columns
+    model = []
+    for row in range(max_columns):
+        model.append('')
+
     # Create a DataFrame and write to CSV
-    df = pd.DataFrame(data, columns=xAxis)
+    df = pd.DataFrame(data, columns=model)
     df.to_csv(filepath, index=False, encoding='utf-8-sig', sep=';')  # Save to CSV without the index
 
     return filepath
@@ -284,6 +345,8 @@ def save_as_pdf(csv_path, pdf_path=''):
     if pdf_path.strip() == '':
         pdf_path = get_next_filename('pdf')
 
+    styles = getSampleStyleSheet()
+
     # Create a PDF document with a specific filename and page size
     doc = SimpleDocTemplate(pdf_path, pagesize=letter)
 
@@ -307,17 +370,25 @@ def save_as_pdf(csv_path, pdf_path=''):
     # Add some space after the logo - adjust as necessary
     elements.append(Spacer(1, 0.25 * inch))
 
+    elements.append(Paragraph(f"Máquinas: {maquinas_entry.get()}", styles['Normal']))
+    elements.append(Paragraph(f"Selected Name: {user.get()}", styles['Normal']))
+
     # List to hold the data for the table
     data = []
 
     # Read the CSV file and append each row to the data list
     with open(csv_path, newline='', encoding='utf-8-sig') as csvfile:
         reader = csv.reader(csvfile)
-        for row in reader:
-            if row:  # Ensure the row is not empty
-                # Split the single string in the row by ';' to form a list of fields
-                fields = row[0].split(';') if len(row) == 1 else row
-                data.append(fields)
+        keep = True
+        while keep:
+            for row in reader:
+                if row[0].replace(';', '').strip() == '':
+                    keep = False
+                    break
+                if row:  # Ensure the row is not empty
+                    # Split the single string in the row by ';' to form a list of fields
+                    fields = row[0].split(';') if len(row) == 1 else row
+                    data.append(fields)
 
     # Create a table with the data
     table = Table(data)
@@ -385,9 +456,12 @@ def gather_emails_and_send(filepath, pdf_path):
     open_pdf_window(filepath)
 
 
+# Initialize user and macchine fields and store references to the widgets
+maquinas_entry, user = setup_top_fields()
+
 # Buttons
-Button(root, text="Limpar Tudo", command=clear_all).grid(column=1, row=53, columnspan=2, pady=(10, 5))
-Button(root, text="Finalizar", command=finalize).grid(column=2, row=53, columnspan=2, pady=(10, 5))
+Button(root, text="Limpar Tudo", command=clear_all).grid(column=1, row=53, columnspan=2, pady=(15, 5))
+Button(root, text="Finalizar", command=finalize).grid(column=2, row=53, columnspan=2, pady=(15, 5))
 Button(root, text="+", command=add_row, width=5).grid(column=53, row=1, padx=10)
 
 # Run the Mainloop
