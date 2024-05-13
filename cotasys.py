@@ -64,6 +64,15 @@ def validate_inputs():
     return True
 
 
+def validate_positive_integer(P):
+    # Check if the string is a digit and convert to integer to check if it's greater than 0
+    if P.isdigit() and int(P) > 0:
+        return int(P)
+    elif P == "":  # Allow empty field to be able to clear the entry or during typing
+        return True
+    return False
+
+
 def refresh_grid_display():
     """ Function to refresh the grid display after adding or removing rows
     """
@@ -85,7 +94,7 @@ def update_row_labels():
     for index, row in enumerate(entries):
         # Create a new label for the row number with updated index
         label = Label(root, text=str(index + 1), width=5, bg='white')
-        label.grid(row=index + 1, column=0)  # Row index in grid starts from 1
+        label.grid(row=index + 2, column=0)  # Row index in grid starts from 1
         row[0] = label  # Update the first element in the row with the new label
         refresh_grid_display()
 
@@ -103,10 +112,19 @@ def add_row():
         label.grid(row=row_number + 1, column=0)
         row_entries.append(label)
 
+        # Register the validation funcion to check if the input is a positive integer
+        validate_int = root.register(validate_positive_integer)
+
         # Create an entry for each column
         for xcoor, x in enumerate(xAxis):
             var = StringVar(root, '')
             e = Entry(root, textvariable=var, width=30, bg='#FFFFF9')
+
+            if x == 'Quantidade':
+                # Apply validation only to 'Quantidade' column
+                # The validate="key" option causes the validatecommand to be triggered on every keystroke, preventing the user from even entering invalid characters, such as non-digits or zero
+                e.config(validate='key', validatecommand=(validate_int, '%P'))
+
             e.grid(row=row_number + 1, column=xcoor + 1)
             row_entries.append(e)
         entries.append(row_entries)
@@ -129,23 +147,29 @@ def remove_row():
 def clear_all():
     """ Function to clear all entries in the grid
     """
+    user.set('')
+    maquinas_entry.delete(0, END)
 
     for row in entries[1:]:
         for entry in row:
-            entry.delete(0, END)
-            entry.insert(0, "")
+            entry.grid_forget()
+            entry.destroy()
+
+    entries.clear()
+    update_row_labels()
+    add_row()
 
 
 def finalize():
     """ Function to finalize the quotation and display the data in a new window
     """
-
     if not validate_inputs():
         return
 
     new_window = Toplevel(root)
     new_window.title("Revisão")
     new_window.configure(bg='white', padx=10, pady=10)
+    new_window.grab_set()
 
     # Filter out completely empty rows and update entries list
     temp_entries = []  # Temporary list to hold non-empty entries
@@ -204,12 +228,13 @@ def finalize():
 def guide_save_pdf(new_window):
     """Function to guide the user to save the file as PDF
     """
+    new_window.configure()
     filepath = export_to_csv(new_window)
     get_pdf_path(new_window, filepath)
 
 
 def guide_finalize(new_window):
-    filepath = export_to_csv(new_window, TRUE)
+    filepath = export_to_csv(new_window)
     gather_emails_and_send(filepath, save_as_pdf(filepath))
 
 
@@ -360,7 +385,7 @@ def save_as_pdf(csv_path, pdf_path=''):
     except:
         pass
 
-    # Add some space after the logo - adjust as necessary
+    # Add some space
     elements.append(Spacer(1, 0.25 * inch))
 
     # Add a context to the PDF
@@ -368,8 +393,8 @@ def save_as_pdf(csv_path, pdf_path=''):
                     maquinas_entry.get()}.", styles['Normal']))
     elements.append(Paragraph("Frete e outras observações a combinar.", styles['Normal']))
 
-    # Add some space after the logo - adjust as necessary
-    elements.append(Spacer(1, 0.25 * inch))
+    # Add some space
+    elements.append(Spacer(2, 0.25 * inch))
 
     # List to hold the data for the table
     data = []
@@ -412,8 +437,8 @@ def save_as_pdf(csv_path, pdf_path=''):
     # Append the table to the elements
     elements.append(table)
 
-    # Add some space after the logo - adjust as necessary
-    elements.append(Spacer(1, 0.25 * inch))
+    # Add some space
+    elements.append(Spacer(2, 0.25 * inch))
 
     # Add a signature and closing message
     elements.append(Paragraph("Atenciosamente,", styles['Normal']))
