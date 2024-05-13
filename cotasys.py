@@ -16,9 +16,6 @@ import re
 # Headers for the table
 xAxis = ["Código", "Nome", "Quantidade"]
 
-# Initial rows count
-initial_rows = 1
-
 # Cells will hold the string vars and the entries
 cells = {}
 
@@ -27,7 +24,7 @@ entries = []
 
 # Make a new Top Level Element (Window)
 root = Tk()
-title = "Sistema de Cotação"
+title = "Cotasys - Sistema de Cotação de Preços"
 root.title(title)
 root.configure(bg='white')
 
@@ -129,11 +126,6 @@ def remove_row():
         messagebox.showinfo("Erro!", "Não é possível remover mais linhas.")
 
 
-# Initialize rows
-for _ in range(initial_rows):
-    add_row()
-
-
 def clear_all():
     """ Function to clear all entries in the grid
     """
@@ -178,9 +170,10 @@ def finalize():
         return
 
     # Display the machine and user fields
-    Label(new_window, text=f"Máquinas: {maquinas_entry.get().replace(';', ', ')}", bg='white').grid(row=0, column=0, columnspan=2, pady=5)
-    Label(new_window, text=f"Usuário: {user.get()}", bg='white').grid(row=0, column=2, columnspan=2, pady=5)
-    
+    Label(new_window, text=f"Máquinas: {maquinas_entry.get().replace(';', ', ')}",
+          background='#FFFFF9').grid(row=0, column=0, columnspan=2, pady=5)
+    Label(new_window, text=f"Usuário: {user.get()}", background='#FFFFF9').grid(row=0, column=2, columnspan=2, pady=5)
+
     # Display the headers
     for i, header in enumerate(xAxis):
         Label(new_window, text=header, bg='white', width=15).grid(row=1, column=i+1, padx=2, pady=2)
@@ -362,7 +355,7 @@ def save_as_pdf(csv_path, pdf_path=''):
         logo = Image('images\\logo.png')
         logo.drawHeight = 1.25 * inch * logo.drawHeight / logo.drawWidth
         logo.drawWidth = 1.25 * inch
-        logo.hAlign = 'CENTER'
+        logo.hAlign = 'LEFT'
         elements.append(logo)
     except:
         pass
@@ -370,8 +363,13 @@ def save_as_pdf(csv_path, pdf_path=''):
     # Add some space after the logo - adjust as necessary
     elements.append(Spacer(1, 0.25 * inch))
 
-    elements.append(Paragraph(f"Máquinas: {maquinas_entry.get().replace(';', ', ')}", styles['Normal']))
-    elements.append(Paragraph(f"Solicitante: {user.get()}", styles['Normal']))
+    # Add a context to the PDF
+    elements.append(Paragraph(f"Favor, cotar os itens abaixo referentes à(s) máquina(s) {
+                    maquinas_entry.get()}.", styles['Normal']))
+    elements.append(Paragraph("Frete e outras observações a combinar.", styles['Normal']))
+
+    # Add some space after the logo - adjust as necessary
+    elements.append(Spacer(1, 0.25 * inch))
 
     # List to hold the data for the table
     data = []
@@ -388,7 +386,7 @@ def save_as_pdf(csv_path, pdf_path=''):
                 if row:  # Ensure the row is not empty
                     # Split the single string in the row by ';' to form a list of fields
                     fields = row[0].split(';') if len(row) == 1 else row
-                    fields = [f for f in fields if f != '']  # Remove empty strings from the row
+                    fields = [f.upper() for f in fields if f != '']  # Remove empty strings from the row
 
                     data.append(fields)
 
@@ -401,7 +399,7 @@ def save_as_pdf(csv_path, pdf_path=''):
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),  # Font for the header
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 5),
         ('BACKGROUND', (0, 1), (-1, -1), row_color),  # Background for other rows
         ('GRID', (0, 0), (-1, -1), 1, colors.black),  # Grid lines for all cells
         ('BOX', (0, 0), (-1, -1), 1, colors.black),  # Border around the table
@@ -413,6 +411,21 @@ def save_as_pdf(csv_path, pdf_path=''):
 
     # Append the table to the elements
     elements.append(table)
+
+    # Add some space after the logo - adjust as necessary
+    elements.append(Spacer(1, 0.25 * inch))
+
+    # Add a signature and closing message
+    elements.append(Paragraph("Atenciosamente,", styles['Normal']))
+
+    try:
+        signature = Image('images\\Jhonatan.png')
+        signature.drawHeight = 4 * inch * signature.drawHeight / signature.drawWidth
+        signature.drawWidth = 4 * inch
+        signature.hAlign = 'LEFT'
+        elements.append(signature)
+    except:
+        pass
 
     # Build the PDF
     doc.build(elements)
@@ -456,6 +469,14 @@ def gather_emails_and_send(filepath, pdf_path):
         messagebox.showinfo("Sucesso!", f"Arquivo exportado para {filepath} e enviado para email")
 
     open_pdf_window(filepath)
+
+
+# Initial rows count
+initial_rows = 1
+
+# Initialize rows
+for _ in range(initial_rows):
+    add_row()
 
 
 # Initialize user and macchine fields and store references to the widgets
