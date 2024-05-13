@@ -55,28 +55,29 @@ def add_attachment(msg, filepath):
         msg.attach(attachment)
 
 
-def mail_bohe(msg, user):
+def mail_bohe(msg, user, image_c_id):
     """ Creates email's body
 
     Args:
         msg (EmailMessage): EmailMessage object to add the body
         user (String): User that asked for the quotation
+        image_c_id (String): Content-ID of the image to be attached
 
     Returns:
         EmailMessage: Returns the EmailMessage object with the body
     """
-    # signature = ''
+    signature = ''
 
-    # try:
-    #     signature = f'<img src="cid:{image_c_id[1:-1]}", style="max-width: 500px; text-align: left;">'
-    # except:
-    #     messagebox.showinfo(
-    #         "Erro!",
-    #         "Assinatura não encontrada. Entrar em contato com o TI.\nO programa continuará normalmente.")
+    try:
+        signature = f'<img src="cid:{image_c_id[1:-1]}", style="max-width: 500px; text-align: left;">'
+    except:
+        messagebox.showinfo(
+            "Erro!",
+            "Assinatura não encontrada. Entrar em contato com o TI.\nO programa continuará normalmente.")
 
     # Create the email footer
     footer = ("<div style='border:none;border-bottom:solid windowtext 1.0pt;padding:0cm 0cm 1.0pt 0cm'><p class='MsoNormal' style='border:none;padding:0cm'><span><u></u>&nbsp;<u></u></span></p></div>" +
-              f"<p></p><p style='max-width: 70%;font-size: 12pt;'>Atenciosamente,<br/>&emsp;{user}</p>")
+              f"<p></p><p style='max-width: 70%;font-size: 12pt;'>Atenciosamente,<br/></p>") + signature
 
     # Create the email body and add the footer
     body = f"<p style='max-width: 70%;font-size: 13pt;'>Olá!" + \
@@ -89,12 +90,12 @@ def mail_bohe(msg, user):
     # Add the body, with the footer, to the email
     msg.add_alternative(body, subtype='html')
 
-    # # Open the signature image and attach it to the email
-    # with open('images\\signature.png', 'rb') as img:
-    #     # Guess the content type of the image and split into main and subtype
-    #     maintype, subtype = mimetypes.guess_type(img.name)[0].split('/')
-    #     # Attach the image to the email with the specified Content-ID
-    #     msg.get_payload()[1].add_related(img.read(), maintype=maintype, subtype=subtype, cid=image_c_id)
+    # Open the user image and attach it to the email
+    with open(f'images\\{user}.png', 'rb') as img:
+        # Guess the content type of the image and split into main and subtype
+        maintype, subtype = mimetypes.guess_type(img.name)[0].split('/')
+        # Attach the image to the email with the specified Content-ID
+        msg.get_payload()[1].add_related(img.read(), maintype=maintype, subtype=subtype, cid=image_c_id)
 
     return msg
 
@@ -119,7 +120,7 @@ def send_email(csv_path, pdf_path, emails, user):
     image_cid = make_msgid(domain='comagro.com.br')
 
     # Insert the email header and body
-    msg = mail_bohe(msg, user)
+    msg = mail_bohe(msg, user, image_cid)
 
     # Attach the csv to the email
     a = add_attachment(msg, f'{csv_path}')

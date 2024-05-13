@@ -49,7 +49,7 @@ def setup_top_fields():
 
     # Listbox for selecting names
     names_combobox = ttk.Combobox(
-        top_frame, values=["Ju", "Palmiro", "Tom"],
+        top_frame, values=["Josuilton", "Jucilande", "Palmiro"],
         state="readonly", width=15, background='#FFFFF9')
     names_combobox.pack(side='right', padx=10)
     Label(top_frame, text="Usuário:", bg='white').pack(side='right', padx=10)
@@ -278,7 +278,7 @@ def export_to_csv(new_window, i=FALSE):
     data.append('')
 
     # Include User field
-    data.append(['Usuário'])
+    data.append(['Solicitante'])
     data.append([user.get()])
 
     # Find the maximum length of any row in the data
