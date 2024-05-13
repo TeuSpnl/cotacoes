@@ -177,14 +177,18 @@ def finalize():
 
         return
 
+    # Display the machine and user fields
+    Label(new_window, text=f"Máquinas: {maquinas_entry.get().replace(';', ', ')}", bg='white').grid(row=0, column=0, columnspan=2, pady=5)
+    Label(new_window, text=f"Usuário: {user.get()}", bg='white').grid(row=0, column=2, columnspan=2, pady=5)
+    
     # Display the headers
     for i, header in enumerate(xAxis):
-        Label(new_window, text=header, bg='white', width=15).grid(row=0, column=i+1, padx=2, pady=2)
+        Label(new_window, text=header, bg='white', width=15).grid(row=1, column=i+1, padx=2, pady=2)
 
     # Display data as sheet
     for row_index, row_entries in enumerate(entries, start=1):
         # Row number label
-        Label(new_window, text=str(row_index), bg='white', width=5).grid(row=row_index, column=0, padx=2, pady=2)
+        Label(new_window, text=str(row_index), bg='white', width=5).grid(row=row_index + 1, column=0, padx=2, pady=2)
 
         for col_index, entry in enumerate(row_entries[1:]):
             if not entry.get().strip():
@@ -193,11 +197,11 @@ def finalize():
                 return
 
             Label(new_window, text=entry.get(), bg="#f0f0f0", width=30).grid(
-                row=row_index, column=col_index + 1, padx=2, pady=2)
+                row=row_index + 1, column=col_index + 1, padx=2, pady=2)
 
     # Buttons for actions
     btn_frame = Frame(new_window, bg='white')
-    btn_frame.grid(row=len(entries) + 1, column=2, pady=(15, 0))
+    btn_frame.grid(row=len(entries) + 2, column=2, pady=(15, 0))
 
     Button(btn_frame, text="Voltar", command=new_window.destroy).pack(side=LEFT, padx=10)
     Button(btn_frame, text="Salvar como PDF", command=lambda: guide_save_pdf(new_window)).pack(side=LEFT, padx=10)
@@ -258,8 +262,6 @@ def export_to_csv(new_window, i=FALSE):
     # Data list to hold the data for the CSV file
     data = []
 
-    data.append(xAxis)
-
     # Gather data from entries and include in the data list
     for row_entries in entries:
         row_data = [entry.get() for entry in row_entries[1:]]
@@ -283,12 +285,10 @@ def export_to_csv(new_window, i=FALSE):
     max_columns = max(len(row) for row in data)
 
     # Create a model row with the maximum number of columns
-    model = []
-    for row in range(max_columns):
-        model.append('')
+    xAxis.extend(['' for _ in range(max_columns - 3)])
 
     # Create a DataFrame and write to CSV
-    df = pd.DataFrame(data, columns=model)
+    df = pd.DataFrame(data, columns=xAxis)
     df.to_csv(filepath, index=False, encoding='utf-8-sig', sep=';')  # Save to CSV without the index
 
     return filepath
@@ -370,8 +370,8 @@ def save_as_pdf(csv_path, pdf_path=''):
     # Add some space after the logo - adjust as necessary
     elements.append(Spacer(1, 0.25 * inch))
 
-    elements.append(Paragraph(f"Máquinas: {maquinas_entry.get()}", styles['Normal']))
-    elements.append(Paragraph(f"Selected Name: {user.get()}", styles['Normal']))
+    elements.append(Paragraph(f"Máquinas: {maquinas_entry.get().replace(';', ', ')}", styles['Normal']))
+    elements.append(Paragraph(f"Solicitante: {user.get()}", styles['Normal']))
 
     # List to hold the data for the table
     data = []
@@ -388,6 +388,8 @@ def save_as_pdf(csv_path, pdf_path=''):
                 if row:  # Ensure the row is not empty
                     # Split the single string in the row by ';' to form a list of fields
                     fields = row[0].split(';') if len(row) == 1 else row
+                    fields = [f for f in fields if f != '']  # Remove empty strings from the row
+
                     data.append(fields)
 
     # Create a table with the data
@@ -447,7 +449,7 @@ def gather_emails_and_send(filepath, pdf_path):
     """
 
     email = ['compras@comagro.com.br']
-    a = send_email(filepath, pdf_path, email, user)
+    a = send_email(filepath, pdf_path, email, user.get())
     if a is False:
         messagebox.showinfo("Erro!", f"Arquivo não encontrado. Entrar em contato com o magnífico TI.")
     else:
