@@ -18,7 +18,7 @@ def add_attachment(msg, filepath):
     """    Lê e adiciona anexo ao email    """
     if not os.path.isfile(filepath):
         # Caso não haja arquivo no caminho especificado
-        messagebox.showinfo("Erro!", f"Planilha não encontrada. Entrar em contato com o TI.")
+        messagebox.showinfo("Erro!", f"Arquivo não encontrado. Entrar em contato com o TI.")
         return False
 
     # Determine the content type of the file

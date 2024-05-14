@@ -5,3 +5,5 @@ cotasys.spec
 /build
 /functions/secrets
 /dist/cotacoes
+/dist
+/Final/cotacoes

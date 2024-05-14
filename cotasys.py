@@ -90,7 +90,7 @@ def update_row_labels():
         refresh_grid_display()
 
 
-def add_row():
+def add_row(event=None):
     """ Function to add rows
     """
 
@@ -123,7 +123,7 @@ def add_row():
         row_entries[-1].bind('<Return>', add_row)  # Bind the Return key to add a new row
 
         entries.append(row_entries)
-        row_entries[0].focus()
+        row_entries[1].focus()
     else:
         messagebox.showinfo("Não permitido", "Limite de 50 itens atingido")
 
@@ -151,32 +151,17 @@ def clear_all():
             entry.grid_forget()
             entry.destroy()
 
-    entries.clear()
-    update_row_labels()
-    add_row()
+    entries
 
 
 def focus_next_entry(event):
-    """ Function to focus the next entry widget when the Return key is pressed
-
-    Args:
-        event (Event): The event object
-    """
+    """Move focus to the next widget or add a new row if it's the last widget in the row."""
     widget = event.widget
-    index = entries.index([widget] + [e for e in widget.master.winfo_children() if isinstance(e, Entry)])
-    print("\n\nWidget: ", widget)
-    
-    print("\n\nmaster.winfo_children(): ", widget.master.winfo_children())
-    
-    for e in widget.master.winfo_children():
-        print("\n\nEntry winfo_children: ", e)
-    
-    print("\n\nIndex: ", index)
-    
-    if index < len(entries) - 1:
-        entries[index + 1][1].focus()
-
-    return 'break'  # Prevent the default behavior of the Return key
+    if widget.tk_focusNext() != widget:
+        widget.tk_focusNext().focus()
+    else:
+        add_row()
+    return "break"  # Prevent the default 'Return' behavior
 
 
 def finalize():
@@ -524,6 +509,11 @@ title = "Cotasys - Sistema de Cotação de Preços"
 root.title(title)
 root.configure(bg='white')
 
+# Buttons
+Button(root, text="Limpar Tudo", command=clear_all).grid(column=1, row=53, columnspan=2, pady=(15, 5))
+Button(root, text="Finalizar", command=finalize).grid(column=2, row=53, columnspan=2, pady=(15, 5))
+Button(root, text="+", command=add_row, width=5).grid(column=53, row=1, padx=10)
+
 # Display the X-axis labels with enumerate
 for i, x in enumerate(xAxis):
     label = Label(root, text=x, width=15, background='white')
@@ -540,11 +530,6 @@ for _ in range(initial_rows):
 
 # Initialize user and macchine fields and store references to the widgets
 maquinas_entry, user = setup_top_fields()
-
-# Buttons
-Button(root, text="Limpar Tudo", command=clear_all).grid(column=1, row=53, columnspan=2, pady=(15, 5))
-Button(root, text="Finalizar", command=finalize).grid(column=2, row=53, columnspan=2, pady=(15, 5))
-Button(root, text="+", command=add_row, width=5).grid(column=53, row=1, padx=10)
 
 # Run the Mainloop
 root.mainloop()

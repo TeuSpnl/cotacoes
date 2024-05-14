@@ -1,0 +1,1 @@
+Para o programa funcionar direito é necessário ter a pasta "images" com com as imagens png com os nomes dos funcionários. É necessário ter nessa pasta a logo.png também.
