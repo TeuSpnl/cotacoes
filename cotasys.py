@@ -22,17 +22,6 @@ cells = {}
 # Store Entry widgets to manage them later
 entries = []
 
-# Make a new Top Level Element (Window)
-root = Tk()
-title = "Cotasys - Sistema de Cotação de Preços"
-root.title(title)
-root.configure(bg='white')
-
-# Display the X-axis labels with enumerate
-for i, x in enumerate(xAxis):
-    label = Label(root, text=x, width=15, background='white')
-    label.grid(row=1, column=i + 1, sticky='sn', pady=10)
-
 
 def setup_top_fields():
     # Create a frame to hold the new fields at the top of the window
@@ -43,12 +32,14 @@ def setup_top_fields():
     Label(top_frame, text="Máquinas:", bg='white').pack(side='left', padx=10)
     maquinas_entry = Entry(top_frame, width=20, bg='#FFFFF9')
     maquinas_entry.pack(side='left')
+    maquinas_entry.bind('<Return>', focus_next_entry)  # Bind the Return key to focus the next entry
 
     # Listbox for selecting names
     names_combobox = ttk.Combobox(
         top_frame, values=["Josuilton", "Jucilande", "Palmiro"],
         state="readonly", width=15, background='#FFFFF9')
     names_combobox.pack(side='right', padx=10)
+    names_combobox.bind('<Return>', focus_next_entry)  # Bind the Return key to focus the next entry
     Label(top_frame, text="Usuário:", bg='white').pack(side='right', padx=10)
 
     return maquinas_entry, names_combobox
@@ -126,8 +117,13 @@ def add_row():
                 e.config(validate='key', validatecommand=(validate_int, '%P'))
 
             e.grid(row=row_number + 1, column=xcoor + 1)
+            e.bind('<Return>', focus_next_entry)  # Bind the Return key to focus the next entry
             row_entries.append(e)
+
+        row_entries[-1].bind('<Return>', add_row)  # Bind the Return key to add a new row
+
         entries.append(row_entries)
+        row_entries[0].focus()
     else:
         messagebox.showinfo("Não permitido", "Limite de 50 itens atingido")
 
@@ -158,6 +154,29 @@ def clear_all():
     entries.clear()
     update_row_labels()
     add_row()
+
+
+def focus_next_entry(event):
+    """ Function to focus the next entry widget when the Return key is pressed
+
+    Args:
+        event (Event): The event object
+    """
+    widget = event.widget
+    index = entries.index([widget] + [e for e in widget.master.winfo_children() if isinstance(e, Entry)])
+    print("\n\nWidget: ", widget)
+    
+    print("\n\nmaster.winfo_children(): ", widget.master.winfo_children())
+    
+    for e in widget.master.winfo_children():
+        print("\n\nEntry winfo_children: ", e)
+    
+    print("\n\nIndex: ", index)
+    
+    if index < len(entries) - 1:
+        entries[index + 1][1].focus()
+
+    return 'break'  # Prevent the default behavior of the Return key
 
 
 def finalize():
@@ -497,6 +516,18 @@ def gather_emails_and_send(filepath, pdf_path):
 
     open_pdf_window(filepath)
     os.remove(pdf_path)
+
+
+# Make a new Top Level Element (Window)
+root = Tk()
+title = "Cotasys - Sistema de Cotação de Preços"
+root.title(title)
+root.configure(bg='white')
+
+# Display the X-axis labels with enumerate
+for i, x in enumerate(xAxis):
+    label = Label(root, text=x, width=15, background='white')
+    label.grid(row=1, column=i + 1, sticky='sn', pady=10)
 
 
 # Initial rows count
