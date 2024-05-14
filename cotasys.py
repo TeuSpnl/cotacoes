@@ -39,9 +39,10 @@ def setup_top_fields():
         top_frame, values=["Josuilton", "Jucilande", "Palmiro"],
         state="readonly", width=15, background='#FFFFF9')
     names_combobox.pack(side='right', padx=10)
-    names_combobox.bind('<Return>', focus_next_entry)  # Bind the Return key to focus the next entry
+    names_combobox.bind('<Return>', focus_one)  # Bind the Return key to focus the next entry
     Label(top_frame, text="Usuário:", bg='white').pack(side='right', padx=10)
 
+    maquinas_entry.focus()
     return maquinas_entry, names_combobox
 
 
@@ -151,7 +152,11 @@ def clear_all():
             entry.grid_forget()
             entry.destroy()
 
-    entries
+    entries.clear()
+    update_row_labels()
+    add_row()
+    
+    maquinas_entry.focus()
 
 
 def focus_next_entry(event):
@@ -161,6 +166,12 @@ def focus_next_entry(event):
         widget.tk_focusNext().focus()
     else:
         add_row()
+    return "break"  # Prevent the default 'Return' behavior
+
+
+def focus_one(event):
+    """Move focus to the first widget."""
+    entries[0][1].focus()
     return "break"  # Prevent the default 'Return' behavior
 
 
@@ -509,11 +520,6 @@ title = "Cotasys - Sistema de Cotação de Preços"
 root.title(title)
 root.configure(bg='white')
 
-# Buttons
-Button(root, text="Limpar Tudo", command=clear_all).grid(column=1, row=53, columnspan=2, pady=(15, 5))
-Button(root, text="Finalizar", command=finalize).grid(column=2, row=53, columnspan=2, pady=(15, 5))
-Button(root, text="+", command=add_row, width=5).grid(column=53, row=1, padx=10)
-
 # Display the X-axis labels with enumerate
 for i, x in enumerate(xAxis):
     label = Label(root, text=x, width=15, background='white')
@@ -530,6 +536,12 @@ for _ in range(initial_rows):
 
 # Initialize user and macchine fields and store references to the widgets
 maquinas_entry, user = setup_top_fields()
+
+
+# Buttons
+Button(root, text="Limpar Tudo", command=clear_all).grid(column=1, row=53, columnspan=2, pady=(15, 5))
+Button(root, text="Finalizar", command=finalize).grid(column=2, row=53, columnspan=2, pady=(15, 5))
+Button(root, text="+", command=add_row, width=5).grid(column=53, row=1, padx=10)
 
 # Run the Mainloop
 root.mainloop()
