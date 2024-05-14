@@ -195,7 +195,7 @@ def finalize():
 
     # Display the machine and user fields
     Label(new_window, text=f"Máquinas: {maquinas_entry.get().replace(';', ', ')}",
-          background='#FFFFF9').grid(row=0, column=0, columnspan=2, pady=5)
+          background='#FFFFF9').grid(row=0, column=1, columnspan=2, pady=5)
     Label(new_window, text=f"Usuário: {user.get()}", background='#FFFFF9').grid(row=0, column=2, columnspan=2, pady=5)
 
     # Display the headers
@@ -221,7 +221,7 @@ def finalize():
     btn_frame.grid(row=len(entries) + 2, column=2, pady=(15, 0))
 
     Button(btn_frame, text="Voltar", command=new_window.destroy).pack(side=LEFT, padx=10)
-    Button(btn_frame, text="Salvar como PDF", command=lambda: guide_save_pdf(new_window)).pack(side=LEFT, padx=10)
+    # Button(btn_frame, text="Salvar como PDF", command=lambda: guide_save_pdf(new_window)).pack(side=LEFT, padx=10)
     Button(btn_frame, text="Concluir", command=lambda: guide_finalize(new_window)).pack(side=RIGHT, padx=10)
 
 
@@ -234,8 +234,9 @@ def guide_save_pdf(new_window):
 
 
 def guide_finalize(new_window):
-    filepath = export_to_csv(new_window)
+    filepath = export_to_csv(new_window, TRUE)
     gather_emails_and_send(filepath, save_as_pdf(filepath))
+    clear_all()
 
 
 def get_next_filename(type='csv'):
@@ -323,6 +324,7 @@ def open_pdf_window(filepath):
     new_window.title("Salvar como PDF?")
     new_window.geometry("200x125")
     new_window.configure(bg='white')
+    new_window.grab_set()
     Label(new_window, text="Salvar como PDF?").pack(pady=10)
 
     Button(
@@ -455,9 +457,9 @@ def save_as_pdf(csv_path, pdf_path=''):
     # Build the PDF
     doc.build(elements)
 
-    if 1 == 1:
-        # Save data as PDF (simulation)
-        messagebox.showinfo("Salvar como PDF", f"PDF salvo em {pdf_path}")
+    if pdf_path:
+        # Inform the user that the PDF has been saved
+        messagebox.showinfo("PDF salvo", f"PDF salvo em {pdf_path}")
 
     return pdf_path
 
@@ -494,6 +496,7 @@ def gather_emails_and_send(filepath, pdf_path):
         messagebox.showinfo("Sucesso!", f"Arquivo exportado para {filepath} e enviado para email")
 
     open_pdf_window(filepath)
+    os.remove(pdf_path)
 
 
 # Initial rows count
