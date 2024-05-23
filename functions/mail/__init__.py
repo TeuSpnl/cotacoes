@@ -43,7 +43,6 @@ def add_attachment(msg, filepath):
             attachment.add_header(
                 'Content-Disposition', 'attachment', filename='cotacao_comagro.pdf',
                 filepath=os.path.basename(filepath))
-            msg.attach(attachment)
         else:
             # For all other file types, use MIMEApplication
             maintype = 'text'
@@ -109,9 +108,12 @@ def send_email(csv_path, pdf_path, emails, user):
         emails (list): list of emails to send the quotation
         user (string): user that asked for the quotation
     """
+    # Gets quotation number
+    number = csv_path.split('\\')[-1].split('.')[0]
+
     # Cria um corpo de email e define o assunto
     msg = EmailMessage()
-    msg['Subject'] = f'Cotação Comagro'
+    msg['Subject'] = f'Cotação Comagro nº {number}'
 
     # Cria um texto plain e evita erro no get_playload
     msg.set_content('If you can see this, please consider updating your email client to support HTML emails.')

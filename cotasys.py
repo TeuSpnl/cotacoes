@@ -155,7 +155,7 @@ def clear_all():
     entries.clear()
     update_row_labels()
     add_row()
-    
+
     maquinas_entry.focus()
 
 
@@ -261,25 +261,33 @@ def get_next_filename(type='csv'):
         String: Path of the next file
     """
 
-    directory = "cotacoes"
+    directory = "\\\\Servidor\\Users\\Pichau\\Documents\\Drive Comagro\\Cotacoes"
     if not os.path.exists(directory):
         os.makedirs(directory)
+
+    if user.get() == 'Josuilton':
+        nuser = 1
+    elif user.get() == 'Jucilande':
+        nuser = 2
+    elif user.get() == 'Palmiro':
+        nuser = 3
 
     files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f)) and f.endswith('.csv')]
 
     highest_number = 0
     for file in files:
         try:
-            number = int(file.split('.')[0])
-            if number > highest_number:
+            n = file.split('.')[0]
+            number = int(n[-5:])
+            if number >= highest_number:
                 highest_number = number
         except ValueError:
             continue
 
     if type == 'pdf':
-        return os.path.join(directory, f"{highest_number:05d}.pdf")
+        return os.path.join(directory, f"{nuser:02d}{highest_number:05d}.pdf")
     else:
-        return os.path.join(directory, f"{highest_number + 1:05d}.csv")
+        return os.path.join(directory, f"{nuser:02d}{highest_number + 1:05d}.csv")
 
 
 def export_to_csv(new_window, i=FALSE):
@@ -300,7 +308,14 @@ def export_to_csv(new_window, i=FALSE):
     for row_entries in entries:
         row_data = [entry.get() for entry in row_entries[1:]]
         data.append(row_data)
-
+    
+    # Include an empty row for spacing
+    data.append('')
+    
+    # Include quotation number
+    nquot = filepath.split('\\')[-1].split('.')[0]
+    data.append(['Cotação: ', f'#{nquot}'])
+    
     # Include an empty row for spacing
     data.append('')
 
@@ -377,8 +392,12 @@ def save_as_pdf(csv_path, pdf_path=''):
         pdf_path (String): [Optional] Path of the PDF file
     """
 
+    nquot = ''
+
     if pdf_path.strip() == '':
         pdf_path = get_next_filename('pdf')
+        nquot = pdf_path.split('\\')[-1].split('.')[0]
+        
 
     styles = getSampleStyleSheet()
 
@@ -402,6 +421,13 @@ def save_as_pdf(csv_path, pdf_path=''):
     except:
         pass
 
+    # Add some space
+    elements.append(Spacer(1, 0.25 * inch))
+    
+    if nquot != '':
+        # Add quotation number
+        elements.append(Paragraph(f"Cotação: <b>#{nquot}</b>", styles['Normal']))
+    
     # Add some space
     elements.append(Spacer(1, 0.25 * inch))
 
@@ -455,7 +481,7 @@ def save_as_pdf(csv_path, pdf_path=''):
     elements.append(table)
 
     # Add some space
-    elements.append(Spacer(2, 0.25 * inch))
+    elements.append(Spacer(4, 0.25 * inch))
 
     # Add a signature and closing message
     elements.append(Paragraph("Atenciosamente,", styles['Normal']))
