@@ -21,6 +21,9 @@ def add_attachment(msg, filepath):
         messagebox.showinfo("Erro!", f"Arquivo não encontrado. Entrar em contato com o TI.")
         return False
 
+    filenumber = filepath.split('\\')[-1].split('.')[0]
+    filename = f'cotacao_comagro-{filenumber}'
+
     # Determine the content type of the file
     ctype, encoding = mimetypes.guess_type(filepath)
 
@@ -30,6 +33,9 @@ def add_attachment(msg, filepath):
     # Salva o tipo e subtipo do arquivo
     maintype, subtype = ctype.split('/', 1)
 
+    if subtype == 'vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+        subtype = 'xlsx'
+
     # Read the file and set the correct MIME type
     with open(filepath, 'rb') as file:
         file_data = file.read()
@@ -38,18 +44,16 @@ def add_attachment(msg, filepath):
             attachment = MIMEImage(file_data, _subtype=subtype)
             attachment.add_header('Content-ID', '<{}>'.format(os.path.basename(filepath)))
             attachment.add_header('Content-Disposition', 'inline', filepath=os.path.basename(filepath))
-        elif subtype == 'pdf':
-            attachment = MIMEApplication(file_data, _subtype=subtype)
-            attachment.add_header(
-                'Content-Disposition', 'attachment', filename='cotacao_comagro.pdf',
-                filepath=os.path.basename(filepath))
         else:
-            # For all other file types, use MIMEApplication
-            maintype = 'text'
-            subtype = 'csv'
+            if subtype == 'pdf' or subtype == 'xlsx':
+                pass
+            else:
+                # For all other file types, use MIMEApplication
+                maintype = 'text'
+                subtype = 'csv'
             attachment = MIMEApplication(file_data, _subtype=subtype)
             attachment.add_header(
-                'Content-Disposition', 'attachment', filename='cotacao_comagro.csv',
+                'Content-Disposition', 'attachment', filename=f'{filename}.{subtype}',
                 filepath=os.path.basename(filepath))
         msg.attach(attachment)
 
@@ -99,17 +103,17 @@ def mail_bohe(msg, user, image_c_id):
     return msg
 
 
-def send_email(csv_path, pdf_path, emails, user):
+def send_email(xslx_path, pdf_path, emails, user):
     """Envia o email ao cliente
 
     Args:
-        csv_path (string): path of the actual quotation
+        xslx_path (string): path of the actual quotation
         pdf_path (string): path of the pdf quotation
         emails (list): list of emails to send the quotation
         user (string): user that asked for the quotation
     """
     # Gets quotation number
-    number = csv_path.split('\\')[-1].split('.')[0]
+    number = xslx_path.split('\\')[-1].split('.')[0]
 
     # Cria um corpo de email e define o assunto
     msg = EmailMessage()
@@ -124,8 +128,8 @@ def send_email(csv_path, pdf_path, emails, user):
     # Insert the email header and body
     msg = mail_bohe(msg, user, image_cid)
 
-    # Attach the csv to the email
-    a = add_attachment(msg, f'{csv_path}')
+    # Attach the xslx to the email
+    a = add_attachment(msg, f'{xslx_path}')
 
     # If the file was not found, return False
     if a is False:

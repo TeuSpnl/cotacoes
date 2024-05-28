@@ -1,16 +1,16 @@
 from tkinter import *
-from tkinter import ttk
-from tkinter import messagebox, Toplevel
+from tkinter import ttk, messagebox, Toplevel
 from tkinter.filedialog import asksaveasfilename
-from functions.mail import *
+from functions.mail import send_email
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Image, Spacer, Paragraph
 from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet
+from openpyxl.styles import Alignment, NamedStyle
+from openpyxl import load_workbook
 import pandas as pd
 import os
-import csv
 import re
 
 # Headers for the table
@@ -124,7 +124,8 @@ def add_row(event=None):
         row_entries[-1].bind('<Return>', add_row)  # Bind the Return key to add a new row
 
         entries.append(row_entries)
-        row_entries[1].focus()
+        if row_number != 1:
+            row_entries[1].focus()
     else:
         messagebox.showinfo("Não permitido", "Limite de 50 itens atingido")
 
@@ -244,18 +245,18 @@ def guide_save_pdf(new_window):
     """Function to guide the user to save the file as PDF
     """
     new_window.configure()
-    filepath = export_to_csv(new_window)
+    filepath = export_to_xlsx(new_window)
     get_pdf_path(new_window, filepath)
 
 
 def guide_finalize(new_window):
-    filepath = export_to_csv(new_window, TRUE)
+    filepath = export_to_xlsx(new_window, TRUE)
     gather_emails_and_send(filepath, save_as_pdf(filepath))
     clear_all()
 
 
-def get_next_filename(type='csv'):
-    """Function to get the next filename for the CSV or PDF file
+def get_next_filename(type='xlsx'):
+    """Function to get the next filename for the xlsx or PDF file
 
     Returns:
         String: Path of the next file
@@ -272,7 +273,7 @@ def get_next_filename(type='csv'):
     elif user.get() == 'Palmiro':
         nuser = 3
 
-    files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f)) and f.endswith('.csv')]
+    files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f)) and f.endswith('.xlsx')]
 
     highest_number = 0
     for file in files:
@@ -287,11 +288,11 @@ def get_next_filename(type='csv'):
     if type == 'pdf':
         return os.path.join(directory, f"{nuser:02d}{highest_number:05d}.pdf")
     else:
-        return os.path.join(directory, f"{nuser:02d}{highest_number + 1:05d}.csv")
+        return os.path.join(directory, f"{nuser:02d}{highest_number + 1:05d}.xlsx")
 
 
-def export_to_csv(new_window, i=FALSE):
-    """ Function to export the data to a CSV file
+def export_to_xlsx(new_window, i=FALSE):
+    """ Function to export the data to a xlsx file
 
     Args:
         new_window (Tk Window): The window to be destroyed
@@ -301,44 +302,88 @@ def export_to_csv(new_window, i=FALSE):
 
     filepath = get_next_filename()
 
-    # Data list to hold the data for the CSV file
+    # Include the 'Unitário' header in the xAxis file
+    xAxis.extend(['Unitário'])
+
+    # Data list to hold the data for the xlsx file
     data = []
 
     # Gather data from entries and include in the data list
     for row_entries in entries:
         row_data = [entry.get() for entry in row_entries[1:]]
+        # Add empty strings to match the length of xAxis
+        row_data.extend(['' for _ in range(len(xAxis) - len(row_data))])
         data.append(row_data)
-    
+
     # Include an empty row for spacing
     data.append('')
-    
+
     # Include quotation number
     nquot = filepath.split('\\')[-1].split('.')[0]
     data.append(['Cotação: ', f'#{nquot}'])
-    
+
     # Include an empty row for spacing
     data.append('')
 
     # Include Machines field
-    data.append(['Máquinas'])
+    data.append(['Máquinas:'])
     data.append(maquinas_entry.get().split(';'))
 
     # Include an empty row for spacing
     data.append('')
 
     # Include User field
-    data.append(['Solicitante'])
+    data.append(['Solicitante:'])
     data.append([user.get()])
 
     # Find the maximum length of any row in the data
     max_columns = max(len(row) for row in data)
 
     # Create a model row with the maximum number of columns
-    xAxis.extend(['' for _ in range(max_columns - 3)])
+    xAxis.extend(['' for _ in range(max_columns - 4)])
 
-    # Create a DataFrame and write to CSV
-    df = pd.DataFrame(data, columns=xAxis)
-    df.to_csv(filepath, index=False, encoding='utf-8-sig', sep=';')  # Save to CSV without the index
+    # Create a model row with the maximum number of columns
+    xAxis_with_qtd = xAxis.copy()
+    xAxis_with_qtd[2] = "Qtd"  # Rename "Quantidade" to "Qtd" for the Excel sheet
+    
+    xAxis.remove('Unitário')  # Remove 'Unitário' from the header list
+
+    # Convert the qtd data to int
+    for row in data:
+        if len(row) > 2 and row[2].isdigit():
+            row[2] = int(row[2])
+
+    # Create a DataFrame and write to xlsx
+    df = pd.DataFrame(data, columns=xAxis_with_qtd)
+
+    # Save the DataFrame to an Excel file
+    # Specify the engine as 'openpyxl', which allows us to use formatting features
+    with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name=f'Cotação #{nquot}')
+
+        # Get the workbook and the worksheet for further formatting
+        workbook = writer.book
+        worksheet = writer.sheets[f'Cotação #{nquot}']
+
+        # Create a style for currency formatting
+        currency_style = NamedStyle(name="accounting_style",
+                                    number_format='_(R$* #,##0.00_);_(R$* (#,##0.00);_(R$* "-"??_);_(@_)')
+        workbook.add_named_style(currency_style)
+
+        # Create a style for center alignment
+        center_alignment = Alignment(horizontal="center")
+
+        # Apply currency format and center alignment to the 'Unitário' column
+        # Assuming 'Unitário' is the fourth column in Excel, which corresponds to column 'D'
+        for row in range(2, len(df) + 2):  # Adjust the range for actual data rows
+            worksheet.cell(row=row, column=4).style = currency_style
+            worksheet.cell(row=row, column=3).alignment = center_alignment  # Center align 'qtd' column
+
+        # Optionally, adjust column widths
+        worksheet.column_dimensions['A'].width = 15
+        worksheet.column_dimensions['B'].width = 20
+        worksheet.column_dimensions['C'].width = 10
+        worksheet.column_dimensions['D'].width = 20
 
     return filepath
 
@@ -347,7 +392,7 @@ def open_pdf_window(filepath):
     """Function to open a new window to ask if the user wants to save the file as PDF
 
     Args:
-        filepath (String): Path of the CSV file to be saved as PDF
+        filepath (String): Path of the xlsx file to be saved as PDF
     """
 
     new_window = Toplevel(root)
@@ -365,12 +410,12 @@ def open_pdf_window(filepath):
            width=10, bg='#FFFFF9').pack(side="right", padx=5, pady=5)
 
 
-def get_pdf_path(new_window, csv_path, i=FALSE):
+def get_pdf_path(new_window, xlsx_path, i=FALSE):
     """Function to get the path where the PDF file should be saved
 
     Args:
         new_window (TK Window): The window to be destroyed
-        csv_path (String): Path of the CSV file to be saved as PDF
+        xlsx_path (String): Path of the xlsx file to be saved as PDF
         i (boolean): [Optional] True if the window should be destroyed
 
     Returns:
@@ -381,14 +426,14 @@ def get_pdf_path(new_window, csv_path, i=FALSE):
 
     pdf_path = asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
 
-    save_as_pdf(csv_path, pdf_path)
+    save_as_pdf(xlsx_path, pdf_path)
 
 
-def save_as_pdf(csv_path, pdf_path=''):
-    """ Function to save the CSV file as PDF
+def save_as_pdf(xlsx_path, pdf_path=''):
+    """ Function to save the xlsx file as PDF
 
     Args:
-        csv_path (String): Path of the CSV file to be saved as PDF
+        xlsx_path (String): Path of the xlsx file to be saved as PDF
         pdf_path (String): [Optional] Path of the PDF file
     """
 
@@ -397,7 +442,6 @@ def save_as_pdf(csv_path, pdf_path=''):
     if pdf_path.strip() == '':
         pdf_path = get_next_filename('pdf')
         nquot = pdf_path.split('\\')[-1].split('.')[0]
-        
 
     styles = getSampleStyleSheet()
 
@@ -423,11 +467,11 @@ def save_as_pdf(csv_path, pdf_path=''):
 
     # Add some space
     elements.append(Spacer(1, 0.25 * inch))
-    
+
     if nquot != '':
         # Add quotation number
         elements.append(Paragraph(f"Cotação: <b>#{nquot}</b>", styles['Normal']))
-    
+
     # Add some space
     elements.append(Spacer(1, 0.25 * inch))
 
@@ -439,24 +483,22 @@ def save_as_pdf(csv_path, pdf_path=''):
     # Add some space
     elements.append(Spacer(2, 0.25 * inch))
 
+    wb = load_workbook(xlsx_path)
+    ws = wb.active
+
     # List to hold the data for the table
     data = []
 
-    # Read the CSV file and append each row to the data list
-    with open(csv_path, newline='', encoding='utf-8-sig') as csvfile:
-        reader = csv.reader(csvfile)
-        keep = True
-        while keep:
-            for row in reader:
-                if row[0].replace(';', '').strip() == '':
-                    keep = False
-                    break
-                if row:  # Ensure the row is not empty
-                    # Split the single string in the row by ';' to form a list of fields
-                    fields = row[0].split(';') if len(row) == 1 else row
-                    fields = [f.upper() for f in fields if f != '']  # Remove empty strings from the row
-
-                    data.append(fields)
+    # Extract data from the Excel sheet
+    for row_index, row in enumerate(ws.iter_rows(values_only=True)):
+        if not any(row):
+            break
+        if row_index == 0:
+            # Modify the header row to change 'Qtd' to 'Quantidade'
+            header_row = [str(cell) if cell.upper() != "QTD" else "Quantidade" for cell in row[:-1]]
+            data.append(header_row)
+        else:
+            data.append([str(cell) if cell is not None else '' for cell in row[:-1]])
 
     # Create a table with the data
     table = Table(data)
