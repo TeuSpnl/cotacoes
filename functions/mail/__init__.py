@@ -2,16 +2,17 @@
 from email.mime.application import MIMEApplication
 from email.message import EmailMessage
 from email.mime.image import MIMEImage
-from functions.secrets import senha
+from functions.secrets import tenant_id, client_id, client_secret
 from tkinter import messagebox
 from email.utils import make_msgid
 
 import os
 import mimetypes
 import smtplib
+import base64
+import requests
 
 EMAIL_ADDRESS = 'vendas@comagro.com.br'  # Endereço de email do remetente
-EMAIL_PASS = senha  # Senha do email do remetente
 
 
 def add_attachment(msg, filepath):
@@ -103,6 +104,22 @@ def mail_bohe(msg, user, image_c_id):
     return msg
 
 
+def get_oauth2_token():
+    url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded',
+    }
+    data = {
+        'grant_type': 'client_credentials',
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'scope': 'https://graph.microsoft.com/.default',
+    }
+    response = requests.post(url, headers=headers, data=data)
+    response.raise_for_status()
+    return response.json()['access_token']
+
+
 def send_email(xslx_path, pdf_path, emails, user):
     """Envia o email ao cliente
 
@@ -142,16 +159,33 @@ def send_email(xslx_path, pdf_path, emails, user):
     if a is False:
         return False
 
+    # Função para criar a string de autenticação OAuth2
+    def encode_oauth2_string(username, access_token):
+        auth_string = f'user={username}\1auth=Bearer {access_token}\1\1'
+        return base64.b64encode(auth_string.encode()).decode()
+
+    access_token = get_oauth2_token()
+
     # Send the email to each recipient
-    with smtplib.SMTP_SSL('smtp.hostinger.com', 465) as smtp:
-        smtp.login(EMAIL_ADDRESS, EMAIL_PASS)
+    with smtplib.SMTP('smtp-mail.outlook.com', 587) as smtp:
+        smtp.starttls()  # Inicia a conexão TLS
+
+        auth_string = encode_oauth2_string(EMAIL_ADDRESS, access_token)
+
+        # Insert the access token in the AUTH command
+        smtp.docmd('AUTH XOAUTH2' + auth_string)
 
         for email in emails:
             sender = EMAIL_ADDRESS
             to = email
 
-            # Converts the email to a legible archive for the smtplib
             raw = f"From: {sender}\r\nTo: {to}\r\n{msg.as_string()}"
+
+            # msg['From'] = sender  # Add the sender to the email header
+            # msg['To'] = to # Add the recipient to the email header
+
+            # # Converts the email to a legible archive for the smtplib
+            # raw = msg.as_string()
 
             # Send the mail
             try:
