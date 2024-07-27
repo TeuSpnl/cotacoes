@@ -10,7 +10,9 @@ import os
 import mimetypes
 import smtplib
 import base64
-import requests
+import ssl
+import msal
+
 
 EMAIL_ADDRESS = 'vendas@comagro.com.br'  # Endereço de email do remetente
 
@@ -105,19 +107,31 @@ def mail_bohe(msg, user, image_c_id):
 
 
 def get_oauth2_token():
-    url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
-    headers = {
-        'Content-Type': 'application/x-www-form-urlencoded',
-    }
-    data = {
-        'grant_type': 'client_credentials',
-        'client_id': client_id,
-        'client_secret': client_secret,
-        'scope': 'https://graph.microsoft.com/.default',
-    }
-    response = requests.post(url, headers=headers, data=data)
-    response.raise_for_status()
-    return response.json()['access_token']
+    # URL de token do Azure Entra
+    url = f"https://login.microsoftonline.com/{tenant_id}"
+
+    # Escopo para enviar email
+    scope = ['https://graph.microsoft.com/.default']
+
+    # Autenticação usando MSAL
+    app = msal.ConfidentialClientApplication(
+        client_id=client_id,
+        authority=url,
+        client_credential=client_secret
+    )
+
+    # Obtém o token de acesso
+    token_response = app.acquire_token_for_client(scopes=scope)
+
+    if 'access_token' in token_response:
+        return token_response['access_token']
+    else:
+        return None
+
+
+def encode_oauth2_string(username, access_token):
+    auth_string = f'user={username}\1auth=Bearer {access_token}\1\1'
+    return base64.b64encode(auth_string.encode()).decode()
 
 
 def send_email(xslx_path, pdf_path, emails, user):
@@ -159,37 +173,38 @@ def send_email(xslx_path, pdf_path, emails, user):
     if a is False:
         return False
 
-    # Função para criar a string de autenticação OAuth2
-    def encode_oauth2_string(username, access_token):
-        auth_string = f'user={username}\1auth=Bearer {access_token}\1\1'
-        return base64.b64encode(auth_string.encode()).decode()
-
     access_token = get_oauth2_token()
 
+    if access_token is None:
+        messagebox.showinfo("Erro!", "Não foi possível obter o token de acesso.")
+        return False
+
     # Send the email to each recipient
-    with smtplib.SMTP('smtp-mail.outlook.com', 587) as smtp:
-        smtp.starttls()  # Inicia a conexão TLS
+    with smtplib.SMTP('comagro-com-br.mail.protection.outlook.com', 25) as smtp:
+        smtp.ehlo()
+        smtp.starttls(context=ssl.create_default_context())  # Inicia a conexão TLS
+        smtp.ehlo()
 
         auth_string = encode_oauth2_string(EMAIL_ADDRESS, access_token)
 
-        # Insert the access token in the AUTH command
-        smtp.docmd('AUTH XOAUTH2' + auth_string)
+        try:
+            smtp.docmd('AUTH XOAUTH2', auth_string)
+        except smtplib.SMTPException as e:
+            messagebox.showinfo("Erro de Autenticação!", f"[Erro]: {
+                str(e)}\nNão foi possível autenticar usando OAuth2.")
 
         for email in emails:
             sender = EMAIL_ADDRESS
             to = email
 
-            raw = f"From: {sender}\r\nTo: {to}\r\n{msg.as_string()}"
+            # Converte o e-mail em um formato legível para o smtplib
+            msg['From'] = sender  # Adiciona o remetente ao cabeçalho
+            msg['To'] = to  # Adiciona o destinatário ao cabeçalho
+            raw = msg.as_string()
 
-            # msg['From'] = sender  # Add the sender to the email header
-            # msg['To'] = to # Add the recipient to the email header
-
-            # # Converts the email to a legible archive for the smtplib
-            # raw = msg.as_string()
-
-            # Send the mail
+            # Envia o e-mail
             try:
                 smtp.sendmail(sender, to, raw)
-            except Exception as e:
-                messagebox.showinfo("Erro!", f"[Erro]: {e.__class__}\nEmail: {email} Lista: {
-                                    emails}\n\nO programa continuará a enviar os emails restantes.")
+            except smtplib.SMTPException as e:
+                messagebox.showinfo("Erro de Envio!", f"[Erro]: {str(e)}\nEmail: {email} Lista: {
+                    emails}\n\nO programa continuará a enviar os emails restantes.")
